@@ -10,6 +10,9 @@ export default function Dashboard({ auth }) {
     const [selectedOption, setSelectedOption] = useState('');
     const [offices, setOffices] = useState([]);
 
+    const userRole = auth.user.roles;
+    const office = auth.user.office;
+
     useEffect(() => {
         axios.get('/get-offices')
             .then(response => {
@@ -19,6 +22,12 @@ export default function Dashboard({ auth }) {
                 console.error('Error fetching data: ', error);
             });
     }, []);
+
+    useEffect(() => {
+        if (userRole === 'User') {
+            setSelectedOption(office);
+        }
+    }, [userRole, office]);
 
     return (
         <AuthenticatedLayout
@@ -36,23 +45,32 @@ export default function Dashboard({ auth }) {
                             <label className='text-gray-900'>STORE NAME:</label>
                         </div>
                         <div className="p-2">
-                            <select
-                                value={selectedOption}
-                                onChange={(e) => {
-                                    setSelectedOption(e.target.value);
-                                }}
-                                className='relative z-20 w-full rounded border py-3 px-5 outline-none'
-                            >
-                                <option value="" disabled>Select</option>
-                                {offices.map((office, index) => (
-                                    <option
-                                        key={index}
-                                        value={office.office}
-                                    >
-                                        {office.office}
-                                    </option>
-                                ))}
-                            </select>
+                            {userRole === 'Administrator' ? (
+                                <select
+                                    value={selectedOption}
+                                    onChange={(e) => {
+                                        setSelectedOption(e.target.value);
+                                    }}
+                                    className='relative z-20 w-full rounded border py-3 px-5 outline-none'
+                                >
+                                    <option value="" disabled>Select</option>
+                                    {offices.map((office, index) => (
+                                        <option
+                                            key={index}
+                                            value={office.office}
+                                        >
+                                            {office.office}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type='text'
+                                    value={selectedOption}
+                                    readOnly
+                                    className='relative z-20 w-full rounded border py-3 px-5 outline-none bg-gray-200'
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

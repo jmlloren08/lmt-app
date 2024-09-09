@@ -9,11 +9,13 @@ export default function Authenticated({ user, header, children }) {
 
     const [showNavigationDropDown, setShowNavigationDropDown] = useState(false);
 
-    const navigation = [
+    const fullNavigation = [
         { name: 'Home', href: route('dashboard'), current: route().current('dashboard') },
         { name: 'Reports', href: route('reports'), current: route().current('reports') },
         { name: 'Settings', href: route('settings'), current: route().current('settings') }
     ];
+
+    const navigation = user.roles === 'Administrator' ? fullNavigation : fullNavigation.filter(item => item.name === 'Home' || item.name === 'Reports');
 
     const userNavigation = [
         { name: 'Profile', href: route('profile.edit'), current: route().current('profile.edit') },
@@ -36,7 +38,7 @@ export default function Authenticated({ user, header, children }) {
                                 </Link>
                             </div>
                             <div className="hidden md:block">
-                                <div className="ml-10 flex items-baseline space-x-4">
+                                <div className="ml-10 flex items-baseline space-x-1">
                                     {navigation.map((item) => (
                                         <NavLink
                                             key={item.name}

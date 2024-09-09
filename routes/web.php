@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\DataLmtListsController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
+use App\Http\Middleware\CheckRoles;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -25,16 +27,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Reports');
     })->name('reports');
     // view pages / settings
-    Route::get('/settings', function () {
-        return Inertia::render('Settings');
-    })->name('settings');
+
+    Route::middleware([CheckRoles::class])->group(function () {
+        Route::get('/settings', function () {
+            return Inertia::render('Settings');
+        })->name('settings');
+        Route::get('/get-users-list', [UserController::class, 'getUsers']);
+    });
+
     // get data
     Route::get('/get-offices', [DataLmtListsController::class, 'getDistinctOffice']);
     Route::get('/get-lists', [DataLmtListsController::class, 'getLists']);
     Route::get('/get-account-status', [DataLmtListsController::class, 'getAccountStatus']);
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

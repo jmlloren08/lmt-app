@@ -81,8 +81,10 @@ export default function TableLists({ selectedOption }) {
                 setLoading(false);
 
             } catch (error) {
+
                 console.error('Error fetching data: ', error);
                 setLoading(false);
+
             } finally {
                 setLoading(false);
             }
@@ -204,7 +206,9 @@ export default function TableLists({ selectedOption }) {
                 <Column
                     header='Actions'
                     body={(rowData) => (
-                        <button className='p-button p-component p-button-text'>View</button>
+                        <div className='justify-items-center items-center'>
+                            <button className='bg-gray-500 text-white p-button p-component p-button-text p-1'>View</button>
+                        </div>
                     )}
                     style={{ minWidth: '8rem' }}
                 />

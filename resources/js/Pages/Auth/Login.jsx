@@ -254,7 +254,7 @@ export default function Login({ status, canResetPassword }) {
                                     <input
                                         type="submit"
                                         value={processing ? 'Processing...' : 'Sign In'}
-                                        className={`w-full cursor-pointer rounded-lg border border-primary p-4 text-white transition hover:bg-opacity-90 ${processing ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500'}`}
+                                        className={`w-full rounded-lg border border-primary p-4 text-white transition hover:bg-opacity-90 ${processing ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 cursor-pointer'}`}
                                         disabled={processing}
                                     />
                                 </div>

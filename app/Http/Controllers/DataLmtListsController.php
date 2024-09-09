@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\DataLmtLists;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-
-use function PHPUnit\Framework\isNull;
+use Illuminate\Support\Facades\Auth;
 
 class DataLmtListsController extends Controller
 {
@@ -14,7 +14,10 @@ class DataLmtListsController extends Controller
     {
         try {
 
-            $offices = DataLmtLists::select('office')->distinct()->get();
+            $users = Auth::user()->roles;
+            $userOffice = Auth::user()->office;
+
+            $users === 'Administrator' ? $offices = DataLmtLists::select('office')->distinct()->get() : $offices = DataLmtLists::where('office', $userOffice)->distinct()->get();
 
             return response()->json($offices);
         } catch (\Exception $e) {
@@ -26,15 +29,21 @@ class DataLmtListsController extends Controller
     public function getLists(Request $request)
     {
         try {
-            // get the selected store from the request
+
+            $users = Auth::user()->roles;
+            $userOffice = Auth::user()->office;
             $store = $request->store;
-            // if a store is selected, filter the data by the selected store
+
             $query = DataLmtLists::query();
-            // if store found
-            if (!is_null($store)) {
-                $query->where('office', $store);
+
+            if ($users === 'Administrator') {
+                if (!is_null($store)) {
+                    $query->where('office', $store);
+                }
+            } else {
+                $query->where('office', $userOffice);
             }
-            // fetch the lists based on the query
+
             $lists = $query->select('id', 'name', 'account_status', 'eligibility')->get();
 
             return response()->json($lists);
@@ -48,7 +57,8 @@ class DataLmtListsController extends Controller
     {
         try {
 
-            // get the selected store from the request
+            $users = Auth::user()->roles;
+            $userOffice = Auth::user()->office;
             $store = $request->store;
 
             $statuses = [
@@ -65,10 +75,17 @@ class DataLmtListsController extends Controller
 
             // query the data for each status, optionally filtering by store
             foreach ($statuses as $status) {
+
                 $query = DataLmtLists::where('account_status', $status);
-                if (!is_null($store)) {
-                    $query->where('office', $store);
+
+                if ($users === 'Administrator') {
+                    if (!is_null($store)) {
+                        $query->where('office', $store);
+                    }
+                } else {
+                    $query->where('office', $userOffice);
                 }
+
                 $counts[$status] = $query->count();
             }
 
