@@ -39,6 +39,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/get-offices', [DataLmtListsController::class, 'getDistinctOffice']);
     Route::get('/get-lists', [DataLmtListsController::class, 'getLists']);
     Route::get('/get-account-status', [DataLmtListsController::class, 'getAccountStatus']);
+    Route::get('/get-other-data/{id}', [DataLmtListsController::class, 'getOtherData']);
+    // update data
+    Route::patch('/update-user-role/{id}', [UserController::class, 'update']);
+    Route::patch('/cancel-user-role/{id}', [UserController::class, 'cancel']);
+    // remove data
+    Route::delete('/remove-user/{id}', [UserController::class, 'delete']);
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

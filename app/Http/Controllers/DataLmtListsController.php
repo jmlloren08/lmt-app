@@ -96,4 +96,23 @@ class DataLmtListsController extends Controller
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }
+    public function getOtherData($id)
+    {
+        try {
+
+            $otherData = DataLmtLists::select('school', 'district', 'gtd', 'prncpl', 'tsndng', 'ntrst', 'mrtztn', 'ewrbddctn', 'nthp', 'nddctd', 'dedstat', 'ntprcd', 'mntd', 'engagement_status', 'progress_report')
+                ->where('id', $id)
+                ->first();
+
+            if (!$otherData) {
+                return response()->json(['errors' => 'Data not found.'], 404);
+            }
+
+            return response()->json($otherData);
+        } catch (\Exception $e) {
+
+            Log::error("Error fetching other data: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
 }

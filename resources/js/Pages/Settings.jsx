@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
+import { Button } from 'primereact/button';
+import { ButtonGroup } from 'primereact/buttongroup';
+import { Dialog } from 'primereact/dialog';
+import { Toast } from 'primereact/toast';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
@@ -10,6 +14,14 @@ export default function Settings({ auth }) {
 
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [visibleUpdateDialog, setVisibleUpdateDialog] = useState(false);
+    const [visibleCancelDialog, setVisibleCancelDialog] = useState(false);
+    const [visibleRemoveDialog, setVisibleRemoveDialog] = useState(false);
+    const [selectedOption, setSelectedOption] = useState('');
+    const [selectedUser, setSelectedUser] = useState(null);
+
+    const userId = auth.user.id;
+    const toast = useRef(null);
 
     useEffect(() => {
 
@@ -72,15 +84,7 @@ export default function Settings({ auth }) {
 
     const dateTimeBodyTemplate = (rowData) => {
 
-        let date;
-
-        if (rowData.created_at) {
-            date = new Date(rowData.created_at)
-        } else if (rowData.updated_at) {
-            date = new Date(rowData.updated_at)
-        } else {
-            return 'No data';
-        }
+        let date = rowData.created_at ? new Date(rowData.created_at) : new Date(rowData.updated_at);
 
         const formattedDate = date.toLocaleString('en-PH', {
             timeZone: 'Asia/Manila',
@@ -96,6 +100,121 @@ export default function Settings({ auth }) {
         return formattedDate.replace(',', '');
     }
 
+    const save = async () => {
+        if (!selectedOption) {
+            toast.current.show({ severity: 'warn', summary: 'Validation Error', detail: 'Please select a role before saving.', life: 3000 });
+            return
+        }
+        try {
+            const response = await axios.patch(`/update-user-role/${selectedUser.id}`, {
+                roles: selectedOption
+            });
+            toast.current.show({ severity: 'success', summary: 'Success', detail: response.data.success, life: 3000 });
+            setVisibleUpdateDialog(false);
+            setUsers((prevUsers) => prevUsers.map((user) => user.id === selectedUser.id ? { ...user, roles: selectedOption } : user));
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: error.response?.data.message || 'An error while updating the role.', life: 3000 });
+            setVisibleUpdateDialog(false);
+        }
+    }
+
+    const cancel = async () => {
+        try {
+            const response = await axios.patch(`/cancel-user-role/${selectedUser.id}`, {
+                roles: null
+            });
+            toast.current.show({ severity: 'success', summary: 'Success', detail: response.data.success, life: 3000 });
+            setVisibleCancelDialog(false);
+            setUsers((prevUsers) => prevUsers.map((user) => user.id === selectedUser.id ? { ...user, roles: selectedOption } : user));
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: error.response?.data.message || 'An error while updating the role.', life: 3000 });
+            setVisibleCancelDialog(false);
+        }
+    }
+
+    const remove = async () => {
+        try {
+            const response = await axios.delete(`/remove-user/${selectedUser.id}`);
+            toast.current.show({ severity: 'success', summary: 'Success', detail: response.data.success, life: 3000 });
+            setVisibleRemoveDialog(false);
+            setUsers((prevUsers) => prevUsers.filter(user => user.id !== selectedUser.id));
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: error.response?.data.message || 'An error while updating the role.', life: 3000 });
+            setVisibleRemoveDialog(false);
+        }
+    }
+
+    const showUpdateDialog = (user) => {
+        setSelectedUser(user);
+        setSelectedOption(user.roles || 'User');
+        setVisibleUpdateDialog(true);
+    }
+
+    const showCancelDialog = (user) => {
+        setSelectedUser(user);
+        setSelectedOption(null);
+        setVisibleCancelDialog(true);
+    }
+
+    const showRemoveDialog = async (user) => {
+        setSelectedUser(user);
+        setVisibleRemoveDialog(true);
+    }
+
+    const updateDialogFooter = (
+        <div className='card flex justify-end gap-2'>
+            <Button
+                label='Save'
+                icon='pi pi-check'
+                onClick={save}
+                autoFocus
+                className='bg-blue-500 text-white font-medium p-button-text px-2'
+            />
+            <Button
+                label='Cancel'
+                icon='pi pi-times'
+                onClick={() => setVisibleUpdateDialog(false)}
+                className='bg-gray-500 text-white p-button-text p-2'
+            />
+        </div>
+    );
+
+    const cancelDialogFooter = (
+        <div className='card flex justify-end gap-2'>
+            <Button
+                label='Delete'
+                icon='pi pi-trash'
+                onClick={cancel}
+                autoFocus
+                className='bg-red-500 text-white font-medium p-button-text px-2'
+            />
+            <Button
+                label='Cancel'
+                icon='pi pi-times'
+                onClick={() => setVisibleCancelDialog(false)}
+                className='bg-gray-500 text-white p-button-text p-2'
+            />
+        </div>
+    );
+
+    const removeDialogFooter = (
+        <div className='card flex justify-end gap-2'>
+            <Button
+                label='Remove'
+                icon='pi pi-trash'
+                onClick={remove}
+                autoFocus
+                className='bg-red-500 text-white font-medium p-button-text px-2'
+            />
+            <Button
+                label='Cancel'
+                icon='pi pi-times'
+                onClick={() => setVisibleRemoveDialog(false)}
+                className='bg-gray-500 text-white p-button-text p-2'
+            />
+        </div>
+    );
+
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -110,7 +229,15 @@ export default function Settings({ auth }) {
                     tableStyle={{ minWidth: '50rem' }}
                     loading={loading}
                 >
-                    <Column field='name' header='Name' />
+                    <Column field='name' header='Name' body={(rowData) => (
+                        <>
+                            {rowData.id === userId ? (
+                                <span>{`${rowData.name} (You)`}</span>
+                            ) : (
+                                <span>{rowData.name}</span>
+                            )}
+                        </>
+                    )} />
                     <Column field='email' header='Email' />
                     <Column field='email_verified_at' header='Status' body={statusBodyTemplate} />
                     <Column field='roles' header='Role' body={roleBodyTemplate} />
@@ -119,25 +246,98 @@ export default function Settings({ auth }) {
                     <Column
                         header='ACTION'
                         body={(rowData) => (
-                            <div className='flex flex-col md:flex-row md:space-x-2 justify-items-center items-center'>
-                                <button
-                                    className='bg-blue-600 text-white p-button p-component p-button-text p-1 mb-1 md:mb-0'
-                                    onClick={() => handleAssignUser(rowData)}
-                                >
-                                    Assign
-                                </button>
-                                <button
-                                    className='bg-red-500 text-white p-button p-component p-button-text p-1'
-                                    onClick={() => handleRemoveUser(rowData)}
-                                    style={{ marginLeft: '5px' }}
-                                >
-                                    Remove
-                                </button>
+                            <div className='card flex justify-content-center'>
+                                {rowData.roles !== 'Administrator' && (
+                                    <ButtonGroup>
+                                        {rowData.email_verified_at !== null && (
+                                            <Button
+                                                onClick={() => showUpdateDialog(rowData)}
+                                                icon={`pi ${rowData.roles === 'User' ? 'pi-user-edit' : 'pi-user-plus'}`}
+                                                tooltip='Assign/Modify Role'
+                                                className='bg-blue-500 text-white p-2'
+                                            />
+                                        )}
+                                        {rowData.roles === 'User' && (
+                                            <Button
+                                                onClick={() => showCancelDialog(rowData)}
+                                                icon='pi pi-times'
+                                                tooltip='Cancel Role'
+                                                className='bg-yellow-500 text-white font-medium p-2'
+                                            />
+                                        )}
+                                        <Button
+                                            onClick={() => showRemoveDialog(rowData)}
+                                            icon='pi pi-trash'
+                                            tooltip='Remove User'
+                                            className='bg-red-500 text-white font-medium p-2'
+                                        />
+                                    </ButtonGroup>
+                                )}
+                                <Toast ref={toast} />
+                                {visibleUpdateDialog && (
+                                    <Dialog
+                                        modal
+                                        header='Assign/Modify User Role'
+                                        visible={visibleUpdateDialog}
+                                        style={{ width: '24vw' }}
+                                        onHide={() => setVisibleUpdateDialog(false)}
+                                        footer={updateDialogFooter}
+                                    >
+                                        <div className='flex items-center'>
+                                            <div className='p-2'>
+                                                <label className='text-gray-900'>Role</label>
+                                            </div>
+                                            <div className="p-2">
+                                                <select
+                                                    value={selectedOption}
+                                                    onChange={(e) => { setSelectedOption(e.target.value) }}
+                                                    className='relative z-20 w-full rounded border py-3 px-5 outline-none'
+                                                >
+                                                    <option value="" disabled>Select</option>
+                                                    <option value="User">User</option>
+                                                    <option value="Administrator">Administrator</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </Dialog >
+                                )}
+                                {visibleCancelDialog && (
+                                    <Dialog
+                                        modal
+                                        header='Cancel User Role'
+                                        visible={visibleCancelDialog}
+                                        style={{ width: '24vw' }}
+                                        onHide={() => setVisibleCancelDialog(false)}
+                                        footer={cancelDialogFooter}
+                                    >
+                                        <div className='flex items-center'>
+                                            <p className='m-0'>
+                                                Are you sure you want to cancel the role of this User?
+                                            </p>
+                                        </div>
+                                    </Dialog >
+                                )}
+                                {visibleRemoveDialog && (
+                                    <Dialog
+                                        modal
+                                        header='Remove User'
+                                        visible={visibleRemoveDialog}
+                                        style={{ width: '24vw' }}
+                                        onHide={() => setVisibleRemoveDialog(false)}
+                                        footer={removeDialogFooter}
+                                    >
+                                        <div className='flex items-center'>
+                                            <p className='m-0'>
+                                                Are you sure you want to remove this user?
+                                            </p>
+                                        </div>
+                                    </Dialog >
+                                )}
                             </div>
                         )}
                     />
                 </DataTable>
-            </div>
-        </AuthenticatedLayout>
+            </div >
+        </AuthenticatedLayout >
     );
 }

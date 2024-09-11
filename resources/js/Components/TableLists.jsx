@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 // import { className } from 'primereact/utils';
 import { FilterMatchMode, FilterOperator } from 'primereact/api';
@@ -9,12 +9,34 @@ import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import { Dropdown } from 'primereact/dropdown';
 import { Tag } from 'primereact/tag';
+import { OverlayPanel } from 'primereact/overlaypanel';
+import { Button } from 'primereact/button';
 
 export default function TableLists({ selectedOption }) {
 
     const [lists, setLists] = useState([]);
+    const [otherData, setOtherData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const op = useRef(null);
+
+    const fetchOtherData = async (id, event) => {
+
+        setLoading(true)
+        try {
+
+            const response = await axios.get(`/get-other-data/${id}`);
+            setOtherData(response.data);
+            op.current.toggle(event);
+            setLoading(false);
+
+        } catch {
+            console.error('Error fetching data: ', error);
+            setLoading(false);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     const [filters, setFilters] = useState({
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -170,7 +192,7 @@ export default function TableLists({ selectedOption }) {
             <DataTable
                 value={lists}
                 paginator
-                rows={10}
+                rows={5}
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
                 currentPageReportTemplate="{first} to {last} of {totalRecords}"
@@ -182,13 +204,13 @@ export default function TableLists({ selectedOption }) {
                 header={header}
                 emptyMessage='No lists found.'
             >
-                <Column field='name' header='Name' style={{ minWidth: '12rem' }} />
+                <Column field='name' header='Name' style={{ minWidth: '24rem' }} />
                 <Column
                     field='account_status'
                     header='Status'
                     showFilterMenu={false}
-                    filterMenuStyle={{ width: '12rem' }}
-                    style={{ minWidth: '12rem' }}
+                    filterMenuStyle={{ width: '8rem' }}
+                    style={{ minWidth: '8rem' }}
                     body={statusBodyTemplate}
                     filter
                     filterElement={statusRowFilterTemplate}
@@ -197,8 +219,8 @@ export default function TableLists({ selectedOption }) {
                     field='eligibility'
                     header='Eligibility'
                     showFilterMenu={false}
-                    filterMenuStyle={{ width: '12rem' }}
-                    style={{ minWidth: '12rem' }}
+                    filterMenuStyle={{ width: '8rem' }}
+                    style={{ minWidth: '8rem' }}
                     body={eligibilityBodyTemplate}
                     filter
                     filterElement={eligibilityRowFilterTemplate}
@@ -206,8 +228,38 @@ export default function TableLists({ selectedOption }) {
                 <Column
                     header='Actions'
                     body={(rowData) => (
-                        <div className='justify-items-center items-center'>
-                            <button className='bg-gray-500 text-white p-button p-component p-button-text p-1'>View</button>
+                        <div className='card flex flex-column align-items-center gap-3'>
+                            <Button
+                                type='button'
+                                icon='pi pi-eye'
+                                label='View'
+                                onClick={(e) => fetchOtherData(rowData.id, e)}
+                                loading={loading}
+                                className='bg-gray-500 text-white p-button p-component p-button-text p-2'
+                            />
+                            <OverlayPanel ref={op} showCloseIcon closeOnEscape dismissable={false}>
+                                <DataTable value={Array.isArray(otherData) ? otherData : [otherData]}
+                                    size='small'
+                                    scrollable
+                                    className='text-xs'
+                                >
+                                    <Column field='school' header='School' />
+                                    <Column field='district' header='District' />
+                                    <Column field='gtd' header='Granted' />
+                                    <Column field='prncpl' header='Principal' />
+                                    <Column field='tsndng' header='Outstanding' />
+                                    <Column field='ntrst' header='Interest' />
+                                    <Column field='mrtztn' header='Amortization' />
+                                    <Column field='ewrbddctn' header='EWRB Deduction' />
+                                    <Column field='nthp' header='NTHP' />
+                                    <Column field='nddctd' header='Undeducted' />
+                                    <Column field='dedstat' header='DedStat' />
+                                    <Column field='ntprcd' header='Net Proceed' />
+                                    <Column field='mntd' header='Amount Due' />
+                                    <Column field='engagement_status' header='Engagement Status' />
+                                    <Column field='progress_report' header='Progress Report' />
+                                </DataTable>
+                            </OverlayPanel>
                         </div>
                     )}
                     style={{ minWidth: '8rem' }}
