@@ -70,4 +70,24 @@ class UserController extends Controller
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }
+    public function assignStore(Request $request, $id)
+    {
+        try {
+
+            $request->validate([
+                'office' => ['required', 'string']
+            ]);
+
+            $office = User::findOrFail($id);
+
+            $office->office = $request->office;
+            $office->save();
+
+            return response()->json(['success' => 'Store successfully assigned.']);
+        } catch (\Exception $e) {
+
+            Log::error("Error assigning store: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
 }

@@ -2,18 +2,18 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 
-export default function BarChart({ selectedOption }) {
+export default function BarChart({ selectedSchool }) {
 
     const [chartData, setChartData] = useState({ categories: [], series: [], colors: [] });
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
 
-                const response = await axios.get('/get-account-status', {
-                    params: { store: selectedOption || null }
+                const response = await axios.get('/get-account-status-where-school-is', {
+                    params: { school: selectedSchool || null }
                 });
 
                 const counts = response.data;
@@ -48,9 +48,11 @@ export default function BarChart({ selectedOption }) {
             }
         }
 
-        fetchData();
+        if (selectedSchool) {
+            fetchData();
+        }
 
-    }, [selectedOption]);
+    }, [selectedSchool]);
 
     const options = {
         chart: {

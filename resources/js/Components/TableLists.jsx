@@ -1,48 +1,113 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-// import { className } from 'primereact/utils';
-import { FilterMatchMode, FilterOperator } from 'primereact/api';
+
+import { FilterMatchMode } from 'primereact/api';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
-import { Dropdown } from 'primereact/dropdown';
-import { Tag } from 'primereact/tag';
-import { OverlayPanel } from 'primereact/overlaypanel';
 import { Button } from 'primereact/button';
+import { Tag } from 'primereact/tag';
+import { Toast } from 'primereact/toast';
 
-export default function TableLists({ selectedOption }) {
+const PriorityToEngage = React.lazy(() => import('./Dialogs/PriorityToEngageDialog'));
+const StatusFilter = React.lazy(() => import('./Filters/StatusFilter'));
+const EligibilityFilter = React.lazy(() => import('./Filters/EligibilityFilter'));
+const ViewActionButton = React.lazy(() => import('./ActionButtons/ViewActionButton'));
+const EngageDialog = React.lazy(() => import('./Dialogs/EngageDialog'));
 
-    const [lists, setLists] = useState([]);
+export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, refreshPriorityToEngage }) {
+
+    const [listWhereSchoolIs, setListWhereSchoolIs] = useState([]);
     const [otherData, setOtherData] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [visibleEngageDialog, setVisibleEngageDialog] = useState(false);
+    const [visiblePriorityDialog, setVisiblePriorityDialog] = useState(false);
+    const [currentEngageData, setCurrentEngageData] = useState(null);
     const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const [engageStatus, setEngageStatus] = useState('');
+    const [prData, setPrData] = useState('');
+    const [priorityStatus, setPriorityStatus] = useState('');
+
     const op = useRef(null);
-
-    const fetchOtherData = async (id, event) => {
-
-        setLoading(true)
-        try {
-
-            const response = await axios.get(`/get-other-data/${id}`);
-            setOtherData(response.data);
-            op.current.toggle(event);
-            setLoading(false);
-
-        } catch {
-            console.error('Error fetching data: ', error);
-            setLoading(false);
-        } finally {
-            setLoading(false);
-        }
-    }
+    const toast = useRef(null);
+    const userRole = auth.user.roles;
 
     const [filters, setFilters] = useState({
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
         account_status: { value: null, matchMode: FilterMatchMode.EQUALS },
         eligibility: { value: null, matchMode: FilterMatchMode.EQUALS }
     });
+
+    const fetchOtherData = async (id, event) => {
+        setLoading(true)
+        try {
+            const response = await axios.get(`/get-other-data/${id}`);
+            setOtherData(response.data);
+            op.current.toggle(event);
+        } catch {
+            console.error('Error fetching data: ', error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const response = await axios.get('/get-list-where-school-is', {
+                    params: { school: selectedSchool || null }
+                });
+                setListWhereSchoolIs(response.data);
+            } catch (error) {
+                console.error('Error fetching data: ', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        if (selectedSchool) {
+            fetchData();
+        }
+    }, [selectedSchool]);
+
+    const onSaveEngageData = async () => {
+        if (!prData) {
+            toast.current.show({ severity: 'warn', summary: 'Validation Error', detail: 'Please enter action taken/remarks.', life: 3000 });
+            return
+        }
+        try {
+            const response = await axios.patch(`/save-engage-data/${currentEngageData.id}`, {
+                engagement_status: engageStatus,
+                progress_report: prData
+            });
+            toast.current.show({ severity: 'success', summary: 'Success', detail: response.data.success, life: 3000 });
+            if (typeof refreshTotalEngaged === 'function') {
+                refreshTotalEngaged();
+            }
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: error.response?.data.message || 'An error while saving the data.', life: 3000 });
+        } finally {
+            setVisibleEngageDialog(false);
+        }
+    }
+
+    const proceed = async () => {
+        try {
+            const response = await axios.patch(`/update-priority-to-engage/${currentEngageData.id}`, {
+                priority_to_engage: priorityStatus
+            });
+            toast.current.show({ severity: 'success', summary: 'Success', detail: response.data.success, life: 3000 });
+            if (typeof refreshPriorityToEngage === 'function') {
+                refreshPriorityToEngage();
+            }
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: error.response?.data.message || 'An error while updating the data.', life: 3000 });
+        } finally {
+            setVisiblePriorityDialog(false);
+        }
+    }
 
     const [statuses] = useState([
         'Current',
@@ -90,33 +155,7 @@ export default function TableLists({ selectedOption }) {
         }
     }
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-
-                const response = await axios.get('/get-lists', {
-                    params: { store: selectedOption || null }
-                });
-
-                setLists(response.data);
-                setLoading(false);
-
-            } catch (error) {
-
-                console.error('Error fetching data: ', error);
-                setLoading(false);
-
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        fetchData();
-
-    }, [selectedOption]);
-
-    const onglobalFilterValueChange = (e) => {
+    const onGlobalFilterValueChange = (e) => {
         const value = e.target.value;
         let _filters = { ...filters };
         _filters['global'].value = value;
@@ -129,68 +168,31 @@ export default function TableLists({ selectedOption }) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
                 <IconField iconPosition='left'>
                     <InputIcon className='pi pi-search' />
-                    <InputText className='px-7' value={globalFilterValue} onChange={onglobalFilterValueChange} placeholder='Keyword Search' />
+                    <InputText className='px-7' value={globalFilterValue} onChange={onGlobalFilterValueChange} placeholder='Keyword Search' />
                 </IconField>
             </div>
         );
     }
 
-    const statusBodyTemplate = (rowData) => {
-        return (
-            <Tag value={rowData.account_status} severity={getStatusSeverity(rowData.account_status)} />
-        );
-    }
-
-    const eligibilityBodyTemplate = (rowData) => {
-        return (
-            <Tag value={rowData.eligibility} severity={getEligibilitySeverity(rowData.eligibility)} />
-        );
-    }
-
-    const statusItemTemplate = (option) => {
-        return <Tag value={option} severity={getStatusSeverity(option)} />
-    }
-
-    const eligibilityItemTemplate = (option) => {
-        return <Tag value={option} severity={getEligibilitySeverity(option)} />
-    }
-
-    const statusRowFilterTemplate = (options) => {
-        return (
-            <Dropdown
-                value={options.value}
-                options={statuses}
-                onChange={(e) => options.filterApplyCallback(e.value)}
-                itemTemplate={statusItemTemplate}
-                placeholder='Select One'
-                className="p-column-filter"
-                showClear
-                style={{ minWidth: '12rem' }}
-            />
-        );
-    }
-
-    const eligibilityRowFilterTemplate = (options) => {
-        return (
-            <Dropdown
-                value={options.value}
-                options={eligibilities}
-                onChange={(e) => options.filterApplyCallback(e.value)}
-                itemTemplate={eligibilityItemTemplate}
-                placeholder='Select One'
-                className="p-column-filter"
-                showClear
-                style={{ minWidth: '12rem' }}
-            />
-        );
-    }
-
     const header = renderHeader();
+
+    const showEngageDialog = (rowData) => {
+        setCurrentEngageData(rowData);
+        setPrData(prData);
+        setEngageStatus('Engaged');
+        setVisibleEngageDialog(true);
+    }
+
+    const showPriorityDialog = (rowData) => {
+        setCurrentEngageData(rowData);
+        setPriorityStatus('Yes');
+        setVisiblePriorityDialog(true);
+    }
 
     return (
         <div className="card">
             <DataTable
-                value={lists}
+                value={listWhereSchoolIs}
                 paginator
                 rows={5}
                 rowsPerPageOptions={[5, 10, 25, 50]}
@@ -202,69 +204,71 @@ export default function TableLists({ selectedOption }) {
                 loading={loading}
                 globalFilter={globalFilterValue}
                 header={header}
-                emptyMessage='No lists found.'
+                emptyMessage='No list found.'
             >
-                <Column field='name' header='Name' style={{ minWidth: '24rem' }} />
+                <Column field='name' header='NAME' style={{ minWidth: '24rem' }} />
                 <Column
                     field='account_status'
-                    header='Status'
+                    header='ACCOUNT STATUS'
                     showFilterMenu={false}
-                    filterMenuStyle={{ width: '8rem' }}
-                    style={{ minWidth: '8rem' }}
-                    body={statusBodyTemplate}
+                    body={(rowData) => <Tag value={rowData.account_status} severity={getStatusSeverity(rowData.account_status)} />}
                     filter
-                    filterElement={statusRowFilterTemplate}
+                    filterElement={(options) => <StatusFilter value={options.value} options={statuses} onChange={options.filterApplyCallback} getStatusSeverity={getStatusSeverity} />}
                 />
                 <Column
                     field='eligibility'
-                    header='Eligibility'
+                    header='ELIGIBILITY'
                     showFilterMenu={false}
-                    filterMenuStyle={{ width: '8rem' }}
-                    style={{ minWidth: '8rem' }}
-                    body={eligibilityBodyTemplate}
+                    body={(rowData) => <Tag value={rowData.eligibility} severity={getEligibilitySeverity(rowData.eligibility)} />}
                     filter
-                    filterElement={eligibilityRowFilterTemplate}
+                    filterElement={(options) => <EligibilityFilter value={options.value} options={eligibilities} onChange={options.filterApplyCallback} getEligibilitySeverity={getEligibilitySeverity} />}
                 />
                 <Column
-                    header='Actions'
+                    header='ACTIONS'
                     body={(rowData) => (
-                        <div className='card flex flex-column align-items-center gap-3'>
-                            <Button
-                                type='button'
-                                icon='pi pi-eye'
-                                label='View'
-                                onClick={(e) => fetchOtherData(rowData.id, e)}
+                        <div className='card flex flex-column align-items-center gap-1'>
+                            <ViewActionButton
+                                rowData={rowData}
+                                fetchOtherData={fetchOtherData}
                                 loading={loading}
-                                className='bg-gray-500 text-white p-button p-component p-button-text p-2'
+                                otherData={otherData}
+                                op={op}
                             />
-                            <OverlayPanel ref={op} showCloseIcon closeOnEscape dismissable={false}>
-                                <DataTable value={Array.isArray(otherData) ? otherData : [otherData]}
-                                    size='small'
-                                    scrollable
-                                    className='text-xs'
-                                >
-                                    <Column field='school' header='School' />
-                                    <Column field='district' header='District' />
-                                    <Column field='gtd' header='Granted' />
-                                    <Column field='prncpl' header='Principal' />
-                                    <Column field='tsndng' header='Outstanding' />
-                                    <Column field='ntrst' header='Interest' />
-                                    <Column field='mrtztn' header='Amortization' />
-                                    <Column field='ewrbddctn' header='EWRB Deduction' />
-                                    <Column field='nthp' header='NTHP' />
-                                    <Column field='nddctd' header='Undeducted' />
-                                    <Column field='dedstat' header='DedStat' />
-                                    <Column field='ntprcd' header='Net Proceed' />
-                                    <Column field='mntd' header='Amount Due' />
-                                    <Column field='engagement_status' header='Engagement Status' />
-                                    <Column field='progress_report' header='Progress Report' />
-                                </DataTable>
-                            </OverlayPanel>
+                            {userRole === 'User' ? (
+                                <Button
+                                    icon='pi pi-check'
+                                    label='Engage'
+                                    onClick={() => showEngageDialog(rowData)}
+                                    className='bg-blue-500 text-white p-button p-component p-button-text p-2'
+                                />
+                            ) : (
+                                <Button
+                                    icon='pi pi-check'
+                                    label='Priority'
+                                    onClick={() => showPriorityDialog(rowData)}
+                                    className='bg-red-500 text-white p-button p-component p-button-text p-2'
+                                />
+                            )}
                         </div>
                     )}
-                    style={{ minWidth: '8rem' }}
                 />
             </DataTable>
+            <Toast ref={toast} />
+            <EngageDialog
+                visible={visibleEngageDialog}
+                currentEngageData={currentEngageData}
+                engageStatus={engageStatus}
+                setEngageStatus={setEngageStatus}
+                prData={prData}
+                setPrData={setPrData}
+                onSave={onSaveEngageData}
+                onClose={() => setVisibleEngageDialog(false)}
+            />
+            <PriorityToEngage
+                visible={visiblePriorityDialog}
+                onProceed={proceed}
+                onClose={() => setVisiblePriorityDialog(false)}
+            />
         </div>
     );
 }

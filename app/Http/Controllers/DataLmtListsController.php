@@ -10,38 +10,58 @@ use Illuminate\Support\Facades\Auth;
 
 class DataLmtListsController extends Controller
 {
-    public function getDistinctOffice()
+    public function getDistinctStore()
     {
         try {
 
-            $users = Auth::user()->roles;
+            $userRole = Auth::user()->roles;
             $userOffice = Auth::user()->office;
 
-            $users === 'Administrator' ? $offices = DataLmtLists::select('office')->distinct()->get() : $offices = DataLmtLists::where('office', $userOffice)->distinct()->get();
+            $userRole === 'Administrator' ? $offices = DataLmtLists::select('office')->distinct()->get() : $offices = DataLmtLists::where('office', $userOffice)->distinct()->get();
 
             return response()->json($offices);
         } catch (\Exception $e) {
 
-            Log::error("Error fetching offices: " . $e->getMessage());
+            Log::error("Error fetching stores: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }
-    public function getLists(Request $request)
+    public function getDistricts(Request $request)
+    {
+        try {
+            $store = $request->store;
+            $districts = DataLmtLists::where('office', $store)->distinct('district')->get();
+
+            return response()->json($districts);
+        } catch (\Exception $e) {
+
+            Log::error("Error fetching districts: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function getSchools(Request $request)
+    {
+        try {
+            $district = $request->district;
+            $schools = DataLmtLists::where('district', $district)->distinct('school')->get();
+
+            return response()->json($schools);
+        } catch (\Exception $e) {
+
+            Log::error("Error fetching schools: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function getListWhereSchoolIS(Request $request)
     {
         try {
 
-            $users = Auth::user()->roles;
-            $userOffice = Auth::user()->office;
-            $store = $request->store;
+            $school = $request->school;
 
             $query = DataLmtLists::query();
 
-            if ($users === 'Administrator') {
-                if (!is_null($store)) {
-                    $query->where('office', $store);
-                }
-            } else {
-                $query->where('office', $userOffice);
+            if (!is_null($school)) {
+                $query->where('school', $school);
             }
 
             $lists = $query->select('id', 'name', 'account_status', 'eligibility')->get();
@@ -49,17 +69,17 @@ class DataLmtListsController extends Controller
             return response()->json($lists);
         } catch (\Exception $e) {
 
-            Log::error("Error fetching lists: " . $e->getMessage());
+            Log::error("Error fetching schools: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }
-    public function getAccountStatus(Request $request)
+    public function getAccountStatusWhereSchoolIs(Request $request)
     {
         try {
 
-            $users = Auth::user()->roles;
-            $userOffice = Auth::user()->office;
-            $store = $request->store;
+            // $userRole = Auth::user()->roles;
+            // $userOffice = Auth::user()->office;
+            $school = $request->school;
 
             $statuses = [
                 'Current',
@@ -78,13 +98,13 @@ class DataLmtListsController extends Controller
 
                 $query = DataLmtLists::where('account_status', $status);
 
-                if ($users === 'Administrator') {
-                    if (!is_null($store)) {
-                        $query->where('office', $store);
-                    }
-                } else {
-                    $query->where('office', $userOffice);
+                // if ($userRole === 'Administrator') {
+                if (!is_null($school)) {
+                    $query->where('school', $school);
                 }
+                // } else {
+                // $query->where('office', $userOffice);
+                // }
 
                 $counts[$status] = $query->count();
             }
@@ -100,7 +120,7 @@ class DataLmtListsController extends Controller
     {
         try {
 
-            $otherData = DataLmtLists::select('school', 'district', 'gtd', 'prncpl', 'tsndng', 'ntrst', 'mrtztn', 'ewrbddctn', 'nthp', 'nddctd', 'dedstat', 'ntprcd', 'mntd', 'engagement_status', 'progress_report')
+            $otherData = DataLmtLists::select('gtd', 'prncpl', 'tsndng', 'ntrst', 'mrtztn', 'ewrbddctn', 'nthp', 'nddctd', 'dedstat', 'ntprcd', 'mntd', 'engagement_status', 'progress_report')
                 ->where('id', $id)
                 ->first();
 
@@ -112,6 +132,144 @@ class DataLmtListsController extends Controller
         } catch (\Exception $e) {
 
             Log::error("Error fetching other data: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function saveEngageData(Request $request, $id)
+    {
+        try {
+
+            $request->validate([
+                'engagement_status' => ['required', 'string'],
+                'progress_report' => ['required', 'string'],
+                'priority_to_engage' => ['required', 'string']
+            ]);
+
+            $engageData = DataLmtLists::findOrFail($id);
+
+            $engageData->engagement_status = $request->engagement_status;
+            $engageData->progress_report = $request->progress_report;
+            $engageData->priority_to_engage = $request->priority_to_engage;
+            $engageData->save();
+
+            return response()->json(['success' => 'Teacher successfully engaged.']);
+        } catch (\Exception $e) {
+
+            Log::error("Error saving engaged data: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function updatePriorityToEngage(Request $request, $id)
+    {
+        try {
+
+            $request->validate([
+                'priority_to_engage' => ['required', 'string']
+            ]);
+
+            $priority_to_engage = DataLmtLists::findOrFail($id);
+
+            $priority_to_engage->priority_to_engage = $request->priority_to_engage;
+            $priority_to_engage->save();
+
+            return response()->json(['success' => 'Data has been successfully prioritized.']);
+        } catch (\Exception $e) {
+
+            Log::error("Error prioritizing data: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function getCountTotalEngaged()
+    {
+        try {
+
+            $userRole = Auth::user()->roles;
+            $userStore = Auth::user()->office;
+
+            $userRole === 'Administrator' ?
+                $countTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')->count()
+                :
+                $countTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')
+                ->where('office', $userStore)
+                ->count();
+
+            return response()->json($countTotalEngaged);
+        } catch (\Exception $e) {
+
+            Log::error("Error getting count data: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function getCountPriorityToEngage()
+    {
+        try {
+
+            $userRole = Auth::user()->roles;
+            $userStore = Auth::user()->office;
+
+            $userRole === 'Administrator' ?
+                $countPriorityToEngage = DataLmtLists::where('priority_to_engage', 'Yes')->count()
+                :
+                $countPriorityToEngage = DataLmtLists::where('priority_to_engage', 'Yes')
+                ->where('office', $userStore)
+                ->count();
+
+            return response()->json($countPriorityToEngage);
+        } catch (\Exception $e) {
+
+            Log::error("Error getting count data: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function getListForTotalEngaged()
+    {
+        try {
+
+            $userRole = Auth::user()->roles;
+            $userStore = Auth::user()->office;
+
+            $userRole === 'Administrator' ?
+                $listOfTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')
+                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'eligibility', 'engagement_status', 'progress_report')
+                ->orderBy('updated_at', 'desc')
+                ->get()
+                :
+                $listOfTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')
+                ->where('office', $userStore)
+                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'eligibility', 'engagement_status', 'progress_report')
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            return response()->json($listOfTotalEngaged);
+        } catch (\Exception $e) {
+
+            Log::error("Error getting list: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function getListForPriorityToEngage()
+    {
+        try {
+
+            $userRole = Auth::user()->roles;
+            $userStore = Auth::user()->office;
+
+            $userRole === 'Administrator' ?
+                $listOfPriorityToEngage = DataLmtLists::where('priority_to_engage', 'Yes')
+                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'eligibility')
+                ->orderBy('updated_at', 'desc')
+                ->get()
+                :
+                $listOfPriorityToEngage = DataLmtLists::where('priority_to_engage', 'Yes')
+                ->where('office', $userStore)
+                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'eligibility')
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            return response()->json($listOfPriorityToEngage);
+        } catch (\Exception $e) {
+
+            Log::error("Error getting list: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }
