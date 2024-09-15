@@ -17,7 +17,10 @@ class DataLmtListsController extends Controller
             $userRole = Auth::user()->roles;
             $userOffice = Auth::user()->office;
 
-            $userRole === 'Administrator' ? $offices = DataLmtLists::select('office')->distinct()->get() : $offices = DataLmtLists::where('office', $userOffice)->distinct()->get();
+            $userRole === 'Administrator' ?
+                $offices = DataLmtLists::select('office')->distinct()->get()
+                :
+                $offices = DataLmtLists::where('office', $userOffice)->distinct()->get();
 
             return response()->json($offices);
         } catch (\Exception $e) {
@@ -30,7 +33,10 @@ class DataLmtListsController extends Controller
     {
         try {
             $store = $request->store;
-            $districts = DataLmtLists::where('office', $store)->distinct('district')->get();
+            $districts = DataLmtLists::where('office', $store)
+                ->select('district')
+                ->distinct()
+                ->get();
 
             return response()->json($districts);
         } catch (\Exception $e) {
@@ -43,7 +49,10 @@ class DataLmtListsController extends Controller
     {
         try {
             $district = $request->district;
-            $schools = DataLmtLists::where('district', $district)->distinct('school')->get();
+            $schools = DataLmtLists::where('district', $district)
+                ->select('school')
+                ->distinct()
+                ->get();
 
             return response()->json($schools);
         } catch (\Exception $e) {
@@ -77,8 +86,6 @@ class DataLmtListsController extends Controller
     {
         try {
 
-            // $userRole = Auth::user()->roles;
-            // $userOffice = Auth::user()->office;
             $school = $request->school;
 
             $statuses = [
@@ -92,19 +99,13 @@ class DataLmtListsController extends Controller
             ];
 
             $counts = [];
-
-            // query the data for each status, optionally filtering by store
             foreach ($statuses as $status) {
 
                 $query = DataLmtLists::where('account_status', $status);
 
-                // if ($userRole === 'Administrator') {
                 if (!is_null($school)) {
                     $query->where('school', $school);
                 }
-                // } else {
-                // $query->where('office', $userOffice);
-                // }
 
                 $counts[$status] = $query->count();
             }
@@ -142,7 +143,8 @@ class DataLmtListsController extends Controller
             $request->validate([
                 'engagement_status' => ['required', 'string'],
                 'progress_report' => ['required', 'string'],
-                'priority_to_engage' => ['required', 'string']
+                'priority_to_engage' => ['required', 'string'],
+                'action_taken_by' => ['required', 'string']
             ]);
 
             $engageData = DataLmtLists::findOrFail($id);
@@ -150,6 +152,7 @@ class DataLmtListsController extends Controller
             $engageData->engagement_status = $request->engagement_status;
             $engageData->progress_report = $request->progress_report;
             $engageData->priority_to_engage = $request->priority_to_engage;
+            $engageData->action_taken_by = $request->action_taken_by;
             $engageData->save();
 
             return response()->json(['success' => 'Teacher successfully engaged.']);
@@ -230,13 +233,13 @@ class DataLmtListsController extends Controller
 
             $userRole === 'Administrator' ?
                 $listOfTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')
-                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'eligibility', 'engagement_status', 'progress_report')
+                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'eligibility', 'engagement_status', 'progress_report', 'action_taken_by')
                 ->orderBy('updated_at', 'desc')
                 ->get()
                 :
                 $listOfTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')
                 ->where('office', $userStore)
-                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'eligibility', 'engagement_status', 'progress_report')
+                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'eligibility', 'engagement_status', 'progress_report', 'action_taken_by')
                 ->orderBy('updated_at', 'desc')
                 ->get();
 

@@ -29,10 +29,12 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
     const [engageStatus, setEngageStatus] = useState('');
     const [prData, setPrData] = useState('');
     const [priorityStatus, setPriorityStatus] = useState('');
+    const [actionTakenBy, setActionTakenBy] = useState('');
 
     const op = useRef(null);
     const toast = useRef(null);
     const userRole = auth.user.roles;
+    const userName = auth.user.name;
 
     const [filters, setFilters] = useState({
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -80,7 +82,8 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
         try {
             const response = await axios.patch(`/save-engage-data/${currentEngageData.id}`, {
                 engagement_status: engageStatus,
-                progress_report: prData
+                progress_report: prData,
+                action_taken_by: actionTakenBy
             });
             toast.current.show({ severity: 'success', summary: 'Success', detail: response.data.success, life: 3000 });
             if (typeof refreshTotalEngaged === 'function') {
@@ -180,6 +183,7 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
         setCurrentEngageData(rowData);
         setPrData(prData);
         setEngageStatus('Engaged');
+        setActionTakenBy(userName);
         setVisibleEngageDialog(true);
     }
 
@@ -257,8 +261,6 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
             <EngageDialog
                 visible={visibleEngageDialog}
                 currentEngageData={currentEngageData}
-                engageStatus={engageStatus}
-                setEngageStatus={setEngageStatus}
                 prData={prData}
                 setPrData={setPrData}
                 onSave={onSaveEngageData}

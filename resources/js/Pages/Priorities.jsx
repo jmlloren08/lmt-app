@@ -23,6 +23,7 @@ export default function Priorities({ auth }) {
     const [engageStatus, setEngageStatus] = useState('');
     const [prData, setPrData] = useState('');
     const [priorityToEngage, setPriorityToEngage] = useState('');
+    const [actionTakenBy, setActionTakenBy] = useState('');
     const [currentEngageData, setCurrentEngageData] = useState(null);
 
     const [filters, setFilters] = useState({
@@ -31,6 +32,7 @@ export default function Priorities({ auth }) {
 
     const userRole = auth.user.roles;
     const toast = useRef(null);
+    const userName = auth.user.name;
 
     const fetchPriorityToEngageList = () => {
         setLoading(true);
@@ -59,7 +61,8 @@ export default function Priorities({ auth }) {
             const response = await axios.patch(`/save-engage-data/${currentEngageData.id}`, {
                 engagement_status: engageStatus,
                 progress_report: prData,
-                priority_to_engage: priorityToEngage
+                priority_to_engage: priorityToEngage,
+                action_taken_by: actionTakenBy
             });
             toast.current.show({ severity: 'success', summary: 'Success', detail: response.data.success, life: 3000 });
             fetchPriorityToEngageList();
@@ -96,6 +99,7 @@ export default function Priorities({ auth }) {
         setPrData(prData);
         setEngageStatus('Engaged');
         setPriorityToEngage('No');
+        setActionTakenBy(userName);
         setVisibleEngageDialog(true);
     }
 
@@ -148,8 +152,6 @@ export default function Priorities({ auth }) {
                 <EngageDialog
                     visible={visibleEngageDialog}
                     currentEngageData={currentEngageData}
-                    engageStatus={engageStatus}
-                    setEngageStatus={setEngageStatus}
                     prData={prData}
                     setPrData={setPrData}
                     onSave={onSaveEngageData}

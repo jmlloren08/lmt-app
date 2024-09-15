@@ -84,6 +84,7 @@ export default function Reports({ auth }) {
                     <Column field='eligibility' header='ELIGIBILITY' />
                     <Column field='engagement_status' header='ENGAGEMENT STATUS' />
                     <Column field='progress_report' header='PROGRESS REPORT' />
+                    <Column field='action_taken_by' header='ENGAGED BY' />
                 </DataTable>
             </div>
         </AuthenticatedLayout>
