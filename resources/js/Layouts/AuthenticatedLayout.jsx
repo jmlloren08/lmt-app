@@ -11,11 +11,14 @@ export default function Authenticated({ user, header, children }) {
 
     const fullNavigation = [
         { name: 'Home', href: route('dashboard'), current: route().current('dashboard') },
-        { name: 'Reports', href: route('reports'), current: route().current('reports') },
-        { name: 'Settings', href: route('settings'), current: route().current('settings') }
+        { name: 'Priorities', href: route('priorities'), current: route().current('priorities') },
+        { name: 'Engaged', href: route('engaged'), current: route().current('engaged') },
+        { name: 'Users', href: route('users'), current: route().current('users') },
+        { name: 'Schools', href: route('schools'), current: route().current('schools') },
+        { name: 'Teachers', href: route('teachers'), current: route().current('teachers') }
     ];
 
-    const navigation = user.roles === 'Administrator' ? fullNavigation : fullNavigation.filter(item => item.name === 'Home' || item.name === 'Reports');
+    const navigation = user.roles === 'Administrator' ? fullNavigation : fullNavigation.filter(item => item.name === 'Home' || item.name === 'Priorities' || item.name === 'Engaged');
 
     const userNavigation = [
         { name: 'Profile', href: route('profile.edit'), current: route().current('profile.edit') },

@@ -20,7 +20,7 @@ export default function Register() {
     return (
         <>
             <Head title="Sign Up" />
-            
+
             <div className="flex h-screen items-center justify-center bg-gray-100">
                 <div className="flex w-full max-w-6xl bg-white shadow-lg">
                     {/* left side */}

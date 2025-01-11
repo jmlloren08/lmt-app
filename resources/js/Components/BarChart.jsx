@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 
-export default function BarChart({ selectedSchool }) {
+export default function BarChart({ filters }) {
 
     const [chartData, setChartData] = useState({ categories: [], series: [], colors: [] });
     const [loading, setLoading] = useState(false);
@@ -12,11 +12,11 @@ export default function BarChart({ selectedSchool }) {
             setLoading(true);
             try {
 
-                const response = await axios.get('/get-account-status-where-school-is', {
-                    params: { school: selectedSchool || null }
+                const response = await axios.get('/get-account-status-where-filters', {
+                    params: filters || null
                 });
 
-                const counts = response.data;
+                const counts = response.data.counts;
                 const categories = Object.keys(counts);
                 const series = Object.values(counts);
 
@@ -48,11 +48,9 @@ export default function BarChart({ selectedSchool }) {
             }
         }
 
-        if (selectedSchool) {
-            fetchData();
-        }
+        fetchData();
 
-    }, [selectedSchool]);
+    }, [filters]);
 
     const options = {
         chart: {
@@ -111,11 +109,17 @@ export default function BarChart({ selectedSchool }) {
     }
 
     return (
-        <ReactApexChart
-            options={options}
-            series={chartData.series}
-            type='bar'
-            height={350}
-        />
+        <>
+            {chartData.series && Array.isArray(chartData.series) && chartData.series.some((series) => Array.isArray(series.data) && series.data.some((value) => (value > 0))) ? (
+                <ReactApexChart
+                    options={options}
+                    series={chartData.series}
+                    type='bar'
+                    height={350}
+                />
+            ) : (
+                <p className='text-center text-gray-500'>No data found.</p>
+            )}
+        </>
     );
 }

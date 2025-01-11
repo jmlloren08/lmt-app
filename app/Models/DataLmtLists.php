@@ -32,7 +32,11 @@ class DataLmtLists extends Model
         'dedstat',
         'ntprcd',
         'mntd',
+        'client_status',
+        'area',
         'engagement_status',
-        'progress_report'
+        'progress_report',
+        'priority_to_engage',
+        'action_taken_by'
     ];
 }

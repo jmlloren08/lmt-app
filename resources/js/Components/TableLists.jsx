@@ -12,12 +12,10 @@ import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 
 const PriorityToEngage = React.lazy(() => import('./Dialogs/PriorityToEngageDialog'));
-const StatusFilter = React.lazy(() => import('./Filters/StatusFilter'));
-const EligibilityFilter = React.lazy(() => import('./Filters/EligibilityFilter'));
 const ViewActionButton = React.lazy(() => import('./ActionButtons/ViewActionButton'));
 const EngageDialog = React.lazy(() => import('./Dialogs/EngageDialog'));
 
-export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, refreshPriorityToEngage }) {
+export default function TableLists({ filter, auth, refreshTotalEngaged, refreshPriorityToEngage }) {
 
     const [listWhereSchoolIs, setListWhereSchoolIs] = useState([]);
     const [otherData, setOtherData] = useState([]);
@@ -60,19 +58,20 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
             setLoading(true);
             try {
                 const response = await axios.get('/get-list-where-school-is', {
-                    params: { school: selectedSchool || null }
+                    params: filter || null
+
                 });
-                setListWhereSchoolIs(response.data);
+                setListWhereSchoolIs(response.data.lists);
             } catch (error) {
                 console.error('Error fetching data: ', error);
             } finally {
                 setLoading(false);
             }
         }
-        if (selectedSchool) {
-            fetchData();
-        }
-    }, [selectedSchool]);
+
+        fetchData();
+
+    }, [filter]);
 
     const onSaveEngageData = async () => {
         if (!prData) {
@@ -112,22 +111,6 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
         }
     }
 
-    const [statuses] = useState([
-        'Current',
-        'WRITTEN OFF',
-        'Non Performing Pastdue',
-        'Performing Pastdue',
-        'New Possible PD',
-        'Possible Non Performing',
-        'NTB'
-    ]);
-
-    const [eligibilities] = useState([
-        'QUALIFIED',
-        'FOR RECOVERY',
-        'NOT QUALIFIED'
-    ]);
-
     const getStatusSeverity = (status) => {
         switch (status) {
             case 'Current':
@@ -147,8 +130,8 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
         }
     }
 
-    const getEligibilitySeverity = (eligibility) => {
-        switch (eligibility) {
+    const getEligibilitySeverity = (renewal_remarks) => {
+        switch (renewal_remarks) {
             case 'QUALIFIED':
                 return 'success'
             case 'FOR RECOVERY':
@@ -166,19 +149,6 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
         setGlobalFilterValue(value);
     }
 
-    const renderHeader = () => {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-                <IconField iconPosition='left'>
-                    <InputIcon className='pi pi-search' />
-                    <InputText className='px-7' value={globalFilterValue} onChange={onGlobalFilterValueChange} placeholder='Keyword Search' />
-                </IconField>
-            </div>
-        );
-    }
-
-    const header = renderHeader();
-
     const showEngageDialog = (rowData) => {
         setCurrentEngageData(rowData);
         setPrData(prData);
@@ -191,6 +161,17 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
         setCurrentEngageData(rowData);
         setPriorityStatus('Yes');
         setVisiblePriorityDialog(true);
+    }
+
+    const renderHeader = () => {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }} className='text-xs'>
+                <IconField iconPosition='left'>
+                    <InputIcon className='pi pi-search' />
+                    <InputText className='px-7' value={globalFilterValue} onChange={onGlobalFilterValueChange} placeholder='Keyword Search' />
+                </IconField>
+            </div>
+        );
     }
 
     return (
@@ -207,25 +188,28 @@ export default function TableLists({ selectedSchool, auth, refreshTotalEngaged, 
                 filterDisplay="row"
                 loading={loading}
                 globalFilter={globalFilterValue}
-                header={header}
-                emptyMessage='No list found.'
+                header={renderHeader()}
+                emptyMessage={<div className="text-center text-gray-500">No list found.</div>}
+                scrollable
+                scrollHeight='400px'
+                className='text-xs'
             >
-                <Column field='name' header='NAME' style={{ minWidth: '24rem' }} />
+                <Column
+                    field='name'
+                    header='NAME'
+                    sortable
+                />
                 <Column
                     field='account_status'
                     header='ACCOUNT STATUS'
-                    showFilterMenu={false}
+                    sortable
                     body={(rowData) => <Tag value={rowData.account_status} severity={getStatusSeverity(rowData.account_status)} />}
-                    filter
-                    filterElement={(options) => <StatusFilter value={options.value} options={statuses} onChange={options.filterApplyCallback} getStatusSeverity={getStatusSeverity} />}
                 />
                 <Column
-                    field='eligibility'
-                    header='ELIGIBILITY'
-                    showFilterMenu={false}
-                    body={(rowData) => <Tag value={rowData.eligibility} severity={getEligibilitySeverity(rowData.eligibility)} />}
-                    filter
-                    filterElement={(options) => <EligibilityFilter value={options.value} options={eligibilities} onChange={options.filterApplyCallback} getEligibilitySeverity={getEligibilitySeverity} />}
+                    field='renewal_remarks'
+                    header='RENEWAL REMARKS'
+                    sortable
+                    body={(rowData) => <Tag value={rowData.renewal_remarks} severity={getEligibilitySeverity(rowData.renewal_remarks)} />}
                 />
                 <Column
                     header='ACTIONS'

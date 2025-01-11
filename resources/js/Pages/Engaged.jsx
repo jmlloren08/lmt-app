@@ -9,7 +9,7 @@ import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import { InputText } from 'primereact/inputtext';
 
-export default function Reports({ auth }) {
+export default function Engaged({ auth }) {
 
     const [listOfTotalEngaged, setListOfTotalEngaged] = useState([]);
     const [loading, setLoading] = useState(true);

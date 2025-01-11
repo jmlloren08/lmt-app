@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('office');
             $table->string('name');
             $table->string('account_status');
-            $table->string('eligibility');
+            $table->string('renewal_remarks');
             $table->string('school');
             $table->string('district');
             $table->date('gtd')->nullable();
@@ -30,8 +30,12 @@ return new class extends Migration
             $table->string('dedstat')->nullable();
             $table->string('ntprcd')->nullable();
             $table->string('mntd')->nullable();
+            $table->string('client_status');
+            $table->string('area');
             $table->string('engagement_status')->nullable();
             $table->string('progress_report')->nullable();
+            $table->string('priority_to_engage')->nullable();
+            $table->string('action_taken_by')->nullable();
             $table->timestamps();
         });
     }

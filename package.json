@@ -22,8 +22,10 @@
     "dependencies": {
         "@heroicons/react": "^2.1.5",
         "apexcharts": "^3.53.0",
+        "lodash": "^4.17.21",
         "primeicons": "^7.0.0",
         "primereact": "^10.8.2",
-        "react-apexcharts": "^1.4.1"
+        "react-apexcharts": "^1.4.1",
+        "react-select": "^5.9.0"
     }
 }

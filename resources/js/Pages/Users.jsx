@@ -12,7 +12,7 @@ const CancelDialog = React.lazy(() => import('@/Components/Dialogs/CancelDialog'
 const RemoveDialog = React.lazy(() => import('@/Components/Dialogs/RemoveDialog'));
 const AssignStoreDialog = React.lazy(() => import('@/Components/Dialogs/AssignStoreDialog'));
 
-export default function Settings({ auth }) {
+export default function Users({ auth }) {
 
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ export default function Settings({ auth }) {
     }, []);
 
     useEffect(() => {
-        axios.get('/get-stores')
+        axios.get('/get-distinct-stores')
             .then(response => {
                 setStores(response.data);
             })
@@ -191,11 +191,11 @@ export default function Settings({ auth }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Settings</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Manage Users</h2>}
         >
             <Head title="Settings" />
             <div className='card bg-white shadow rounded-lg p-4 mb-4'>
-                <h3 className='font-semibold text-xl mb-4'>User List</h3>
+                <h3 className='font-semibold text-xl mb-4'>List of all users</h3>
                 <DataTable
                     value={users}
                     tableStyle={{ minWidth: '50rem' }}

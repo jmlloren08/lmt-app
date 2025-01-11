@@ -1,123 +1,125 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import { Suspense } from 'react';
+import { debounce } from 'lodash';
+import DashboardCard from '@/Components/DashboardCard';
+import SelectFilter from '@/Components/SelectFilter';
 
-const Spinner = React.lazy(() => import('@/Components/Spinner'));
 const TableLists = React.lazy(() => import('@/Components/TableLists'));
 const BarChart = React.lazy(() => import('@/Components/BarChart'));
 
+const fetchData = async (url, setter, errorMessage) => {
+    try {
+        const response = await axios.get(url);
+        setter(response.data);
+    } catch (error) {
+        console.error(`${errorMessage}`, error);
+    }
+}
+
 export default function Dashboard({ auth }) {
 
-    const [selectedStore, setSelectedStore] = useState('');
-    const [selectedDistrict, setSelectedDistrict] = useState('');
-    const [selectedSchool, setSelectedSchool] = useState('');
-    const [stores, getStores] = useState([]);
-    const [districts, getDistricts] = useState([]);
-    const [schools, getSchools] = useState([]);
+    const { roles: userRole, office: store } = auth.user;
+    // State for filters and data
+    const [filters, setFilters] = useState({
+        store: userRole === 'User' ? store : '',
+        district: '',
+        school: '',
+        account_status: '',
+        renewal_remarks: ''
+    });
+    // State for stores, districts, and schools
+    const [stores, setStores] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [schools, setSchools] = useState([]);
+    // State for total engaged, priority to engage, target conversion, and actual converted
     const [totalEngaged, setTotalEngaged] = useState(0);
     const [priorityToEngage, setPriorityToEngage] = useState(0);
-    const [priorityLoading, setPriorityLoading] = useState(true);
-    const [totalEngagedLoading, setTotalEngagedLoading] = useState(true);
+    const [targetConverted, setTargetConverted] = useState(0);
+    const [actualConverted, setActualConverted] = useState(0);
+    const [loadingStates, setLoadingStates] = useState({
+        totalEngaged: true,
+        priorityToEngage: true,
+        targetConverted: true,
+        actualConverted: true
+    });
 
-    const userRole = auth.user.roles;
-    const store = auth.user.office;
+    const accountStatusOptions = [
+        'Current',
+        'WRITTEN OFF',
+        'Non Performing Pastdue',
+        'Performing Pastdue',
+        'New Possible PD',
+        'Possible Non Performing',
+        'NTB'
+    ].map((status) => ({ value: status, label: status }));
 
+    const renewalRemarksOptions = [
+        'QUALIFIED',
+        'NOT QUALIFIED',
+        'FOR RECOVERY'
+    ].map((remark) => ({ value: remark, label: remark }));
+
+    // Effect for fetching initial data
     useEffect(() => {
-        axios.get('/get-stores')
-            .then(response => {
-                getStores(response.data);
-            })
-            .catch(error => {
-                console.error('Error fetching data: ', error);
-            });
-    }, []);
-
-    useEffect(() => {
-        if (userRole === 'User') {
-            setSelectedStore(store);
+        if (userRole === 'Administrator') {
+            fetchData('get-distinct-stores', setStores, 'Error fetching stores: ');
+        }
+        if (userRole === 'User' && store) {
+            setFilters(prev => ({ ...prev, store: store }));
             fetchDistricts(store);
         }
     }, [userRole, store]);
 
-    const fetchDistricts = (store) => {
-        axios.get(`get-districts?store=${store}`)
-            .then(response => {
-                getDistricts(response.data);
-                setSelectedDistrict('');
-                setSelectedSchool('');
-            })
-            .catch(error => {
-                console.error('Error fetching districts: ', error);
-            });
-    }
-
-    const fetchSchools = (district) => {
-        axios.get(`get-schools?district=${district}`)
-            .then(response => {
-                getSchools(response.data);
-                setSelectedSchool('');
-            })
-            .catch(error => {
-                console.error('Error fetching schools: ', error);
-            });
-    }
-
-    const handleStoreChange = (e) => {
-        setSelectedDistrict('');
-        setSelectedSchool('');
-        setSelectedStore('');
-        const store = e.target.value;
-        setSelectedStore(store);
-        fetchDistricts(store); //fetch district based on the selected store
-    }
-
-    const handleDistrictChange = (e) => {
-        const district = e.target.value;
-        setSelectedDistrict(district);
-        fetchSchools(district); //fetch school based on the selected district
-    }
-
-    const handleSchoolChange = (e) => {
-        const school = e.target.value;
-        if (school) {
-            setSelectedSchool(school);
+    // Fetch districts based on selected store
+    const fetchDistricts = (selectedStore) => {
+        if (selectedStore) {
+            fetchData(`/get-distinct-districts/?store=${selectedStore}`, setDistricts, 'Error fetching districts: ');
+        } else {
+            setDistricts([]);
         }
+        resetFilters(['district', 'school', 'account_status', 'renewal_remarks']);
+    }
+    // Effect for fetching schools whenever district changes
+    useEffect(() => {
+        if (filters.district) {
+            fetchData(`/get-distinct-schools/?district=${filters.district}`, setSchools, 'Error fetching schools: ');
+        } else {
+            setSchools([]);
+        }
+        resetFilters(['school', 'account_status', 'renewal_remarks']);
+    }, [filters.district]);
+
+    // Helper to reset specific filters
+    const resetFilters = (fields) => {
+        setFilters((prev) => fields.reduce((acc, field) => ({ ...acc, [field]: '' }), { ...prev }));
+    }
+
+    // Debounce filter update
+    const updateFilter = debounce((key, value) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    }, 300);
+
+    useEffect(() => {
+        if (!filters.account_status) {
+            setFilters(prev => ({ ...prev, renewal_remarks: '' }));
+        }
+    }, [filters.account_status]);
+
+    // Fetch total engaged and priority to engage
+    const fetchDashboardCounts = () => {
+        setLoadingStates((prev) => ({ ...prev, totalEngaged: true, priorityToEngage: true }));
+        fetchData('/get-count-total-engaged', setTotalEngaged, 'Error fetchin total engaged')
+            .finally(() => setLoadingStates((prev) => ({ ...prev, totalEngaged: false })));
+        fetchData('/get-count-priority-to-engage', setPriorityToEngage, 'Error fetching priority to engage')
+            .finally(() => setLoadingStates((prev) => ({ ...prev, priorityToEngage: false })));
     }
 
     useEffect(() => {
-        refreshTotalEngaged();
-        refreshPriorityToEngage();
+        fetchDashboardCounts();
     }, []);
-
-    const refreshTotalEngaged = () => {
-        setTotalEngagedLoading(true);
-        axios.get('/get-count-total-engaged')
-            .then(response => {
-                setTotalEngaged(response.data);
-            })
-            .catch(error => {
-                console.error('Error fetching data: ', error);
-            })
-            .finally(() => {
-                setTotalEngagedLoading(false);
-            });
-    }
-
-    const refreshPriorityToEngage = () => {
-        setPriorityLoading(true);
-        axios.get('/get-count-priority-to-engage')
-            .then(response => {
-                setPriorityToEngage(response.data);
-            })
-            .catch(error => {
-                console.error('Error fetching data: ', error);
-            })
-            .finally(() => {
-                setPriorityLoading(false);
-            });
-    }
 
     return (
         <AuthenticatedLayout
@@ -125,119 +127,115 @@ export default function Dashboard({ auth }) {
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Dashboard</h2>}
         >
             <Head title="Dashboard" />
-
             {/* main content */}
             <div className='w-full max-w-7xl mx-auto sm:px-6 lg:px-8'>
-                <div className='bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 mb-4'>
-                    {/* store selector */}
-                    <div className="flex items-center">
-                        <div className='p-2'>
-                            <label className='text-gray-900'>STORE NAME:</label>
-                        </div>
-                        <div className="p-2">
-                            {userRole === 'Administrator' ? (
-                                <select
-                                    value={selectedStore}
-                                    onChange={handleStoreChange}
-                                    className='relative z-20 w-full rounded border py-3 px-5 outline-none'
-                                >
-                                    <option value="" disabled>Select</option>
-                                    {stores.map((store, index) => (
-                                        <option
-                                            key={index}
-                                            value={store.office}
-                                        >
-                                            {store.office}
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
+                {/* cards */}
+                <div className='grid grid-cols sm:grid-cols-4 gap-2 mb-4'>
+                    <DashboardCard
+                        title='Priority to Engage'
+                        count={priorityToEngage}
+                        loading={loadingStates.priorityToEngage}
+                        link={route('priorities')}
+                        bgColor='bg-blue-500'
+                    />
+                    <DashboardCard
+                        title='Total Engaged'
+                        count={totalEngaged}
+                        loading={loadingStates.totalEngaged}
+                        link={route('engaged')}
+                        bgColor='bg-green-500'
+                    />
+                    <DashboardCard
+                        title='Target Conversion'
+                        count={targetConverted}
+                        loading={loadingStates.targetConverted}
+                        link={route('target-conversion')}
+                        bgColor='bg-red-500'
+                    />
+                    <DashboardCard
+                        title='Actual Converted'
+                        count={actualConverted}
+                        loading={loadingStates.actualConverted}
+                        link={route('actual-converted')}
+                        bgColor='bg-yellow-500'
+                    />
+                </div>
+                <div className='grid grid-cols sm:grid-cols-2 gap-2 mb-4'>
+                    <div className='bg-white  shadow-sm sm:rounded-lg p-6 mb-4'>
+                        {/* store selector */}
+                        {userRole === 'Administrator' ? (
+                            <SelectFilter
+                                label='Store Name:'
+                                options={stores.map((s) => ({ value: s.office, label: s.office }))}
+                                value={filters.store}
+                                onChange={(value) => updateFilter('store', value)}
+                            />
+                        ) : (
+                            <div className="flex items-center mb-4">
+                                <label className='text-gray-900'>STORE NAME:</label>
                                 <input
                                     type='text'
-                                    value={selectedStore}
+                                    value={filters.store}
+                                    className='relative z-20 w-full rounded border py-3 px-5 outline-none'
                                     readOnly
-                                    className='relative z-20 w-full rounded border py-3 px-5 outline-none bg-gray-200'
                                 />
-                            )}
-                        </div>
+                            </div>
+                        )}
+                        {/* district selector */}
+                        <SelectFilter
+                            label='District Name:'
+                            options={districts.map((d) => ({ value: d.district, label: d.district }))}
+                            value={filters.district}
+                            onChange={(value) => updateFilter('district', value)}
+                        />
+                        {/* school selector */}
+                        <SelectFilter
+                            label='School Name:'
+                            options={schools.map((s) => ({ value: s.school, label: s.school }))}
+                            value={filters.school}
+                            onChange={(value) => updateFilter('school', value)}
+                        />
+                        {/* account status */}
+                        <SelectFilter
+                            label='Account Status:'
+                            options={accountStatusOptions}
+                            value={filters.account_status}
+                            onChange={(value) => updateFilter('account_status', value)}
+                        />
+                        {/* renewal remarks */}
+                        <SelectFilter
+                            label='Renewal Remarks:'
+                            options={renewalRemarksOptions}
+                            value={filters.renewal_remarks}
+                            onChange={(value) => updateFilter('renewal_remarks', value)}
+                        />
                     </div>
-                    {/* district selector */}
-                    <div className='flex items-center'>
-                        <div className='p-2'>
-                            <label className='text-gray-900'>DISTRICT NAME:</label>
-                        </div>
-                        <div className="p-2">
-                            <select
-                                value={selectedDistrict}
-                                onChange={handleDistrictChange}
-                                className='relative z-20 w-full rounded border py-3 px-5 outline-none'
-                            >
-                                <option value="" disabled>Select</option>
-                                {districts.map((district, index) => (
-                                    <option
-                                        key={index}
-                                        value={district.district}
-                                    >
-                                        {district.district}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                    {/* school selector */}
-                    <div className='flex items-center'>
-                        <div className='p-2'>
-                            <label className='text-gray-900'>SCHOOL NAME:</label>
-                        </div>
-                        <div className="p-2">
-                            <select
-                                value={selectedSchool}
-                                onChange={handleSchoolChange}
-                                className='relative z-20 w-full rounded border py-3 px-5 outline-none'
-                            >
-                                <option value="" disabled>Select</option>
-                                {schools.map((school, index) => (
-                                    <option
-                                        key={index}
-                                        value={school.school}
-                                    >
-                                        {school.school}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                {/* cards */}
-                <div className='grid grid-cols-2 gap-2 mb-4'>
-                    <div className='text-white bg-red-500 p-4 shadow rounded-lg'>
-                        <h3 className='text-lg'>Priority to Engaged</h3>
-                        <Link href={route('priorities')}><p className='text-5xl font-bold hover:underline'>{priorityLoading ? <Spinner /> : priorityToEngage}</p></Link>
-                    </div>
-                    <div className='text-white bg-green-500 p-4 shadow rounded-lg'>
-                        <h3 className='text-lg'>Total Engaged</h3>
-                        <Link href={route('reports')}><p className='text-5xl font-bold hover:underline'>{totalEngagedLoading ? <Spinner /> : totalEngaged}</p></Link>
+                    {/* chart */}
+                    <div className='bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 mb-4'>
+                        <h3 className='font-semibold text-xl'>Pie Chart</h3>
+                        <p>Pie chart data here...</p>
                     </div>
                 </div>
                 <Suspense fallback={<div>Loading...</div>}>
                     {/* chart */}
                     <div className='bg-white shadow rounded-lg p-4 mb-4'>
                         <h3 className='font-semibold text-xl'>Bar Chart</h3>
-                        <BarChart selectedSchool={selectedSchool} />
+                        <BarChart
+                            filters={filters}
+                        />
                     </div>
                     {/* table lists */}
                     <div className="bg-white shadow rounded-lg p-4 mb-4">
                         <h3 className='font-semibold text-xl mb-4'>Lists</h3>
                         <TableLists
-                            selectedSchool={selectedSchool}
+                            filter={filters}
                             auth={auth}
-                            refreshTotalEngaged={refreshTotalEngaged}
-                            refreshPriorityToEngage={refreshPriorityToEngage}
+                            refreshTotalEngaged={fetchDashboardCounts}
+                            refreshPriorityToEngage={fetchDashboardCounts}
                         />
                     </div>
                 </Suspense>
             </div>
-
         </AuthenticatedLayout>
     );
 }
