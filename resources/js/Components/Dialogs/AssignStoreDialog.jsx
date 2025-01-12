@@ -6,7 +6,6 @@ const AssignStoreDialog = ({ visible, stores, selectedStore, setSelectedStore, o
         modal
         header='Assign Store'
         visible={visible}
-        // style={{ width: '24vw' }}
         onHide={onClose}
         footer={(
             <div className='card flex justify-end gap-2'>

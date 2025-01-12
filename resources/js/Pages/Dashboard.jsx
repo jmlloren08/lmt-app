@@ -1,12 +1,12 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import React, { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import React, { useState, useEffect } from 'react';
 import { Suspense } from 'react';
 import { debounce } from 'lodash';
-import DashboardCard from '@/Components/DashboardCard';
-import SelectFilter from '@/Components/SelectFilter';
 
+const AuthenticatedLayout = React.lazy(() => import('../Layouts/AuthenticatedLayout'));
+const DashboardCard = React.lazy(() => import('../Components/DashboardCard'));
+const SelectFilter = React.lazy(() => import('../Components/SelectFilter'));
 const TableLists = React.lazy(() => import('@/Components/TableLists'));
 const BarChart = React.lazy(() => import('@/Components/BarChart'));
 
@@ -161,7 +161,7 @@ export default function Dashboard({ auth }) {
                     />
                 </div>
                 <div className='grid grid-cols sm:grid-cols-2 gap-2 mb-4'>
-                    <div className='bg-white  shadow-sm sm:rounded-lg p-6 mb-4'>
+                    <div className='bg-white shadow-sm sm:rounded-lg p-6 mb-4'>
                         {/* store selector */}
                         {userRole === 'Administrator' ? (
                             <SelectFilter

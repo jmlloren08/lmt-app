@@ -3,6 +3,7 @@
 use App\Http\Controllers\DataLmtListsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SchoolController;
+use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\CheckRoles;
 use Illuminate\Support\Facades\Route;
@@ -58,6 +59,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/get-list-for-total-engaged', [DataLmtListsController::class, 'getListForTotalEngaged']);
     Route::get('/get-list-for-priority-to-engage', [DataLmtListsController::class, 'getListForPriorityToEngage']);
     Route::get('/get-list-of-all-schools', [SchoolController::class, 'index']);
+    Route::get('/get-list-of-all-teachers', [TeacherController::class, 'index']);
     Route::get('/get-school-profile/{id}', [SchoolController::class, 'show']);
     // update data
     Route::patch('/update-user-role/{id}', [UserController::class, 'update']);
@@ -65,6 +67,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/assign-user-store/{id}', [UserController::class, 'assignStore']);
     Route::patch('/save-engage-data/{id}', [DataLmtListsController::class, 'saveEngageData']);
     Route::patch('/update-priority-to-engage/{id}', [DataLmtListsController::class, 'updatePriorityToEngage']);
+    Route::patch('/update-teacher-school/{id}', [TeacherController::class, 'update']);
     // remove data
     Route::delete('/remove-user/{id}', [UserController::class, 'delete']);
 });

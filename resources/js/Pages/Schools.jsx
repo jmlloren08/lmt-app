@@ -3,7 +3,6 @@ import AuthenticatedLayout from '../Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import Spinner from '../Components/Spinner';
 import ViewSchoolProfile from '../Components/ActionButtons/ViewSchoolProfile';
 
 export default function Schools({ auth }) {
@@ -61,6 +60,7 @@ export default function Schools({ auth }) {
                     <DataTable
                         value={schools}
                         header={header}
+                        loading={loading}
                         scrollable
                         scrollHeight='400px'
                         paginator

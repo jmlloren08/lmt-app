@@ -8,10 +8,10 @@ const ViewSchoolProfile = ({ rowData, fetchOtherData, loading, otherData, op }) 
         <Button
             type='Button'
             icon='pi pi-eye'
-            label='View'
             onClick={(e) => fetchOtherData(rowData.id, e)}
             loading={loading}
-            className='bg-gray-500 text-white p-button p-component p-button-text p-2'
+            className='hover:text-blue-500 hover:cursor-pointer'
+            title='View Details'
         />
         <OverlayPanel ref={op} showCloseIcon closeOnEscape dismissable={false}>
             <DataTable value={Array.isArray(otherData) ? otherData : [otherData]} size='small' scrollable className='text-xs'>
