@@ -11,11 +11,11 @@ import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 
-const PriorityToEngage = React.lazy(() => import('./Dialogs/PriorityToEngageDialog'));
-const ViewActionButton = React.lazy(() => import('./ActionButtons/ViewActionButton'));
-const EngageDialog = React.lazy(() => import('./Dialogs/EngageDialog'));
+const PriorityToEngage = React.lazy(() => import('../Dialogs/PriorityToEngageDialog'));
+const ViewActionButton = React.lazy(() => import('../ActionButtons/ViewActionButton'));
+const EngageDialog = React.lazy(() => import('../Dialogs/EngageDialog'));
 
-export default function TableLists({ filter, auth, refreshTotalEngaged, refreshPriorityToEngage }) {
+export default function TableLists({ valueFilters, auth, refreshTotalEngaged, refreshPriorityToEngage }) {
 
     const [listWhereSchoolIs, setListWhereSchoolIs] = useState([]);
     const [otherData, setOtherData] = useState([]);
@@ -37,7 +37,7 @@ export default function TableLists({ filter, auth, refreshTotalEngaged, refreshP
     const [filters, setFilters] = useState({
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
         account_status: { value: null, matchMode: FilterMatchMode.EQUALS },
-        eligibility: { value: null, matchMode: FilterMatchMode.EQUALS }
+        renewal_remarks: { value: null, matchMode: FilterMatchMode.EQUALS }
     });
 
     const fetchOtherData = async (id, event) => {
@@ -57,9 +57,8 @@ export default function TableLists({ filter, auth, refreshTotalEngaged, refreshP
         const fetchData = async () => {
             setLoading(true);
             try {
-                const response = await axios.get('/get-list-where-school-is', {
-                    params: filter || null
-
+                const response = await axios.get('/get-list-where-filters', {
+                    params: valueFilters || null
                 });
                 setListWhereSchoolIs(response.data.lists);
             } catch (error) {
@@ -71,7 +70,7 @@ export default function TableLists({ filter, auth, refreshTotalEngaged, refreshP
 
         fetchData();
 
-    }, [filter]);
+    }, [valueFilters]);
 
     const onSaveEngageData = async () => {
         if (!prData) {

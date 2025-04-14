@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Imports\DataLmtListsImport;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DataLmtLists extends Model
 {
@@ -18,7 +20,7 @@ class DataLmtLists extends Model
         'office',
         'name',
         'account_status',
-        'eligibility',
+        'renewal_remarks',
         'school',
         'district',
         'gtd',
@@ -37,6 +39,25 @@ class DataLmtLists extends Model
         'engagement_status',
         'progress_report',
         'priority_to_engage',
-        'action_taken_by'
+        'action_taken_by',
+        'is_archived',
+        'upload_date',
+        'uploaded_by',
     ];
+    public static function processUpload($file)
+    {
+        // Archive existing records
+        self::where('is_archived', false)->update(['is_archived' => true]);
+
+        // Import new data
+        Excel::import(new DataLmtListsImport, $file);
+    }
+    public function getCurrentData()
+    {
+        return self::where('is_archived', false)->get();
+    }
+    public function getArchivedData()
+    {
+        return self::where('is_archived', true)->get();
+    }
 }

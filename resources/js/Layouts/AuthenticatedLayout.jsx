@@ -22,6 +22,7 @@ export default function Authenticated({ user, header, children }) {
 
     const userNavigation = [
         { name: 'Profile', href: route('profile.edit'), current: route().current('profile.edit') },
+        { name: 'Upload CSV', href: route('upload-form'), current: route().current('upload-form') },
         { name: 'Log Out', href: route('logout'), method: 'POST' }
     ];
 

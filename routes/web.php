@@ -31,6 +31,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/reports/actual-converted', function () {
         return Inertia::render('ActualConverted');
     })->name('actual-converted');
+    // view page / upload form
+    Route::get('/data-lmt-list/upload-form', function () {
+        return Inertia::render('DataLmtList/UploadForm');
+    })->name('upload-form');
 
     // view pages / users
     Route::middleware([CheckRoles::class])->group(function () {
@@ -51,8 +55,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/get-distinct-stores', [DataLmtListsController::class, 'getDistinctStore']);
     Route::get('/get-distinct-districts', [DataLmtListsController::class, 'getDistinctDistrict']);
     Route::get('/get-distinct-schools', [DataLmtListsController::class, 'getDistinctSchool']);
-    Route::get('/get-list-where-school-is', [DataLmtListsController::class, 'getListWhereSchoolIS']);
+    Route::get('/get-list-where-filters', [DataLmtListsController::class, 'getListWhereFilters']);
     Route::get('/get-account-status-where-filters', [DataLmtListsController::class, 'getAccountStatusWhereFilters']);
+    Route::get('/get-count-borrowers-where-filters', [DataLmtListsController::class, 'getCountBorrowersWhereFilters']);
     Route::get('/get-other-data/{id}', [DataLmtListsController::class, 'getOtherData']);
     Route::get('/get-count-total-engaged', [DataLmtListsController::class, 'getCountTotalEngaged']);
     Route::get('/get-count-priority-to-engage', [DataLmtListsController::class, 'getCountPriorityToEngage']);
@@ -70,12 +75,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/update-teacher-school/{id}', [TeacherController::class, 'update']);
     // remove data
     Route::delete('/remove-user/{id}', [UserController::class, 'delete']);
-});
-
-Route::middleware(['auth', 'verified'])->group(function () {
+    // profile information
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // upload csv
+    Route::post('/data-lmt-list/upload', [DataLmtListsController::class, 'upload']);
+    Route::get('/data-lmt-list/current', [DataLmtListsController::class, 'getCurrentData']);
+    Route::get('/data-lmt-list/archived', [DataLmtListsController::class, 'getArchivedData']);
+    Route::get('/check-limits', function() {
+        return [
+            'post_max_size' => ini_get('post_max_size'),
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'memory_limit' => ini_get('memory_limit'),
+            'max_execution_time' => ini_get('max_execution_time'),
+        ];
+    });
 });
 
 require __DIR__ . '/auth.php';

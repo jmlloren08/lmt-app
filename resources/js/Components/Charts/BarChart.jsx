@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 
-export default function BarChart({ filters }) {
+export default function BarChart({ valueFilters }) {
 
     const [chartData, setChartData] = useState({ categories: [], series: [], colors: [] });
     const [loading, setLoading] = useState(false);
@@ -13,7 +13,7 @@ export default function BarChart({ filters }) {
             try {
 
                 const response = await axios.get('/get-account-status-where-filters', {
-                    params: filters || null
+                    params: valueFilters || null
                 });
 
                 const counts = response.data.counts;
@@ -50,7 +50,7 @@ export default function BarChart({ filters }) {
 
         fetchData();
 
-    }, [filters]);
+    }, [valueFilters]);
 
     const options = {
         chart: {

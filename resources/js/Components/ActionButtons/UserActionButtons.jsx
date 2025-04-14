@@ -3,14 +3,14 @@ import { ButtonGroup } from 'primereact/buttongroup';
 
 const UserActionButtons = ({ rowData, showUpdateDialog, showCancelDialog, showRemoveDialog, showStoreDialog }) => (
     <ButtonGroup>
-        {rowData.email_verified_at && (
-            <Button
-                onClick={() => showUpdateDialog(rowData)}
-                icon={`pi ${rowData.roles === 'User' ? 'pi-user-edit' : 'pi-user-plus'}`}
-                tooltip='Assign/Modify Role'
-                className='bg-blue-500 text-white p-2'
-            />
-        )}
+        {/* {rowData.email_verified_at && ( */}
+        <Button
+            onClick={() => showUpdateDialog(rowData)}
+            icon={`pi ${rowData.roles === 'User' ? 'pi-user-edit' : 'pi-user-plus'}`}
+            tooltip='Assign/Modify Role'
+            className='bg-blue-500 text-white p-2'
+        />
+        {/* )} */}
         {rowData.roles === 'User' && (
             <>
                 <Button

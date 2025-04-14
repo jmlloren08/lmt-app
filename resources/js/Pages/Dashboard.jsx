@@ -4,11 +4,12 @@ import axios from 'axios';
 import { Suspense } from 'react';
 import { debounce } from 'lodash';
 
+const PieChart = React.lazy(() => import('../Components/Charts/PieChart'));
 const AuthenticatedLayout = React.lazy(() => import('../Layouts/AuthenticatedLayout'));
 const DashboardCard = React.lazy(() => import('../Components/DashboardCard'));
 const SelectFilter = React.lazy(() => import('../Components/SelectFilter'));
-const TableLists = React.lazy(() => import('@/Components/TableLists'));
-const BarChart = React.lazy(() => import('@/Components/BarChart'));
+const TableLists = React.lazy(() => import('@/Components/Table/TableLists'));
+const BarChart = React.lazy(() => import('@/Components/Charts/BarChart'));
 
 const fetchData = async (url, setter, errorMessage) => {
     try {
@@ -22,8 +23,8 @@ const fetchData = async (url, setter, errorMessage) => {
 export default function Dashboard({ auth }) {
 
     const { roles: userRole, office: store } = auth.user;
-    // State for filters and data
-    const [filters, setFilters] = useState({
+    // State for valueFilters and data
+    const [valueFilters, setValueFilters] = useState({
         store: userRole === 'User' ? store : '',
         district: '',
         school: '',
@@ -68,7 +69,7 @@ export default function Dashboard({ auth }) {
             fetchData('get-distinct-stores', setStores, 'Error fetching stores: ');
         }
         if (userRole === 'User' && store) {
-            setFilters(prev => ({ ...prev, store: store }));
+            setValueFilters(prev => ({ ...prev, store: store }));
             fetchDistricts(store);
         }
     }, [userRole, store]);
@@ -80,33 +81,33 @@ export default function Dashboard({ auth }) {
         } else {
             setDistricts([]);
         }
-        resetFilters(['district', 'school', 'account_status', 'renewal_remarks']);
+        resetValueFilters(['district', 'school', 'account_status', 'renewal_remarks']);
     }
     // Effect for fetching schools whenever district changes
     useEffect(() => {
-        if (filters.district) {
-            fetchData(`/get-distinct-schools/?district=${filters.district}`, setSchools, 'Error fetching schools: ');
+        if (valueFilters.district) {
+            fetchData(`/get-distinct-schools/?district=${valueFilters.district}`, setSchools, 'Error fetching schools: ');
         } else {
             setSchools([]);
         }
-        resetFilters(['school', 'account_status', 'renewal_remarks']);
-    }, [filters.district]);
+        resetValueFilters(['school', 'account_status', 'renewal_remarks']);
+    }, [valueFilters.district]);
 
-    // Helper to reset specific filters
-    const resetFilters = (fields) => {
-        setFilters((prev) => fields.reduce((acc, field) => ({ ...acc, [field]: '' }), { ...prev }));
+    // Helper to reset specific valueFilters
+    const resetValueFilters = (fields) => {
+        setValueFilters((prev) => fields.reduce((acc, field) => ({ ...acc, [field]: '' }), { ...prev }));
     }
 
     // Debounce filter update
     const updateFilter = debounce((key, value) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
+        setValueFilters(prev => ({ ...prev, [key]: value }));
     }, 300);
 
     useEffect(() => {
-        if (!filters.account_status) {
-            setFilters(prev => ({ ...prev, renewal_remarks: '' }));
+        if (!valueFilters.account_status) {
+            setValueFilters(prev => ({ ...prev, renewal_remarks: '' }));
         }
-    }, [filters.account_status]);
+    }, [valueFilters.account_status]);
 
     // Fetch total engaged and priority to engage
     const fetchDashboardCounts = () => {
@@ -160,14 +161,14 @@ export default function Dashboard({ auth }) {
                         bgColor='bg-yellow-500'
                     />
                 </div>
-                <div className='grid grid-cols sm:grid-cols-2 gap-2 mb-4'>
+                <div className='grid grid-cols sm:grid-cols-2 gap-2 mb-4 text-center items-center justify-center'>
                     <div className='bg-white shadow-sm sm:rounded-lg p-6 mb-4'>
                         {/* store selector */}
                         {userRole === 'Administrator' ? (
                             <SelectFilter
                                 label='Store Name:'
                                 options={stores.map((s) => ({ value: s.office, label: s.office }))}
-                                value={filters.store}
+                                value={valueFilters.store}
                                 onChange={(value) => updateFilter('store', value)}
                             />
                         ) : (
@@ -175,7 +176,7 @@ export default function Dashboard({ auth }) {
                                 <label className='text-gray-900'>STORE NAME:</label>
                                 <input
                                     type='text'
-                                    value={filters.store}
+                                    value={valueFilters.store}
                                     className='relative z-20 w-full rounded border py-3 px-5 outline-none'
                                     readOnly
                                 />
@@ -185,35 +186,36 @@ export default function Dashboard({ auth }) {
                         <SelectFilter
                             label='District Name:'
                             options={districts.map((d) => ({ value: d.district, label: d.district }))}
-                            value={filters.district}
+                            value={valueFilters.district}
                             onChange={(value) => updateFilter('district', value)}
                         />
                         {/* school selector */}
                         <SelectFilter
                             label='School Name:'
                             options={schools.map((s) => ({ value: s.school, label: s.school }))}
-                            value={filters.school}
+                            value={valueFilters.school}
                             onChange={(value) => updateFilter('school', value)}
                         />
                         {/* account status */}
                         <SelectFilter
                             label='Account Status:'
                             options={accountStatusOptions}
-                            value={filters.account_status}
+                            value={valueFilters.account_status}
                             onChange={(value) => updateFilter('account_status', value)}
                         />
                         {/* renewal remarks */}
                         <SelectFilter
                             label='Renewal Remarks:'
                             options={renewalRemarksOptions}
-                            value={filters.renewal_remarks}
+                            value={valueFilters.renewal_remarks}
                             onChange={(value) => updateFilter('renewal_remarks', value)}
                         />
                     </div>
                     {/* chart */}
-                    <div className='bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 mb-4'>
-                        <h3 className='font-semibold text-xl'>Pie Chart</h3>
-                        <p>Pie chart data here...</p>
+                    <div className='bg-white shadow-sm sm:rounded-lg p-6 mb-4'>
+                        <PieChart
+                            valueFilters={valueFilters}
+                        />
                     </div>
                 </div>
                 <Suspense fallback={<div>Loading...</div>}>
@@ -221,14 +223,14 @@ export default function Dashboard({ auth }) {
                     <div className='bg-white shadow rounded-lg p-4 mb-4'>
                         <h3 className='font-semibold text-xl'>Bar Chart</h3>
                         <BarChart
-                            filters={filters}
+                            valueFilters={valueFilters}
                         />
                     </div>
                     {/* table lists */}
                     <div className="bg-white shadow rounded-lg p-4 mb-4">
                         <h3 className='font-semibold text-xl mb-4'>Lists</h3>
                         <TableLists
-                            filter={filters}
+                            valueFilters={valueFilters}
                             auth={auth}
                             refreshTotalEngaged={fetchDashboardCounts}
                             refreshPriorityToEngage={fetchDashboardCounts}

@@ -36,6 +36,9 @@ return new class extends Migration
             $table->string('progress_report')->nullable();
             $table->string('priority_to_engage')->nullable();
             $table->string('action_taken_by')->nullable();
+            $table->boolean('is_archived')->default(false);
+            $table->date('upload_date')->nullable();
+            $table->string('uploaded_by')->nullable();
             $table->timestamps();
         });
     }
