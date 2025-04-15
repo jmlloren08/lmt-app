@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\DataLmtListsImport;
+use App\Jobs\ProcessDataLmtListsImport;
 
 class DataLmtListsController extends Controller
 {
@@ -62,78 +63,28 @@ class DataLmtListsController extends Controller
                 Log::info("No existing records to archive");
             }
 
-            // Create import instance
-            $import = new DataLmtListsImport();
-            
-            try {
-                Log::info("Starting Excel import process");
-                
-                // Get total rows for progress tracking
-                Log::info("Reading Excel file to get total rows");
-                
-                // Read the file in chunks to get total rows
-                $totalRows = 0;
-                $reader = Excel::toArray($import, $file);
-                if (empty($reader) || empty($reader[0])) {
-                    throw new \Exception("No data found in the Excel file");
+            // Store the file temporarily
+            $tempPath = $file->store('temp');
+            $fullPath = storage_path('app/' . $tempPath);
+
+            // Get total rows without loading the entire file
+            $totalRows = 0;
+            $handle = fopen($fullPath, 'r');
+            if ($handle) {
+                while (fgets($handle) !== false) {
+                    $totalRows++;
                 }
-                
-                $totalRows = count($reader[0]);
-                Log::info("Total rows to process: {$totalRows}");
-                
-                if ($totalRows === 0) {
-                    throw new \Exception("No data found in the Excel file");
-                }
-                
-                $import->setTotalRows($totalRows);
-                
-                // Import the data with memory management
-                Log::info("Starting data import");
-                
-                // Clear the reader to free memory
-                unset($reader);
-                gc_collect_cycles();
-                
-                // Import the data
-                Excel::import($import, $file);
-                
-                Log::info("File processed successfully");
-                
-                // Get current data after import
-                Log::info("Fetching current data");
-                $currentData = DataLmtLists::getCurrentData();
-                
-                return response()->json([
-                    'message' => 'File uploaded and processed successfully.',
-                    'data' => $currentData,
-                    'file_info' => [
-                        'name' => $fileName,
-                        'size' => $fileSize,
-                        'processed_at' => now()->toDateTimeString(),
-                        'total_rows' => $totalRows
-                    ]
-                ]);
-            } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
-                $failures = $e->failures();
-                $errors = [];
-                foreach ($failures as $failure) {
-                    $errors[] = [
-                        'row' => $failure->row(),
-                        'attribute' => $failure->attribute(),
-                        'values' => $failure->values(),
-                        'errors' => $failure->errors()
-                    ];
-                }
-                Log::error("Validation errors during import: " . json_encode($errors));
-                return response()->json([
-                    'message' => 'Validation errors occurred during import',
-                    'errors' => $errors
-                ], 422);
-            } catch (\Exception $e) {
-                Log::error("Error during import: " . $e->getMessage());
-                Log::error("Stack trace: " . $e->getTraceAsString());
-                throw $e;
+                fclose($handle);
             }
+            $totalRows--; // Subtract header row
+
+            Log::info("Total rows to process: {$totalRows}");
+
+            // Dispatch the import job
+            ProcessDataLmtListsImport::dispatch($fullPath, $totalRows, $fileName);
+
+            return redirect()->route('upload-form')->with('success', 'File is being processed. You will be notified once the import is complete.');
+
         } catch (\Exception $e) {
             Log::error("Error processing file: " . $e->getMessage());
             Log::error("Stack trace: " . $e->getTraceAsString());

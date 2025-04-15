@@ -80,7 +80,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     // upload csv
-    Route::post('/data-lmt-list/upload', [DataLmtListsController::class, 'upload']);
+    Route::post('/data-lmt-list/upload', [DataLmtListsController::class, 'upload'])->name('data-lmt-list.upload');
     Route::get('/data-lmt-list/current', [DataLmtListsController::class, 'getCurrentData']);
     Route::get('/data-lmt-list/archived', [DataLmtListsController::class, 'getArchivedData']);
     Route::get('/check-limits', function() {

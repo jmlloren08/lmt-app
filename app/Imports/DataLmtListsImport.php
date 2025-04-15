@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Events\ImportProgress;
 use App\Models\DataLmtLists;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -15,11 +16,18 @@ class DataLmtListsImport implements ToModel, WithHeadingRow, WithValidation, Wit
 {
     private $processedCount = 0;
     private $totalRows = 0;
-    private $batchSize = 100; // Reduced from 1000 to 100
+    private $batchSize = 50; // Reduced chunk size
+    private $lastMemoryCheck = 0;
+    private $fileName;
 
     public function setTotalRows($totalRows)
     {
         $this->totalRows = $totalRows;
+    }
+
+    public function setFileName($fileName)
+    {
+        $this->fileName = $fileName;
     }
 
     public function chunkSize(): int
@@ -31,16 +39,32 @@ class DataLmtListsImport implements ToModel, WithHeadingRow, WithValidation, Wit
     {
         $this->processedCount++;
         
-        // Log progress every 100 rows
-        if ($this->processedCount % 100 === 0) {
+        // Log progress every 50 rows
+        if ($this->processedCount % 50 === 0) {
             $progress = round(($this->processedCount / $this->totalRows) * 100, 2);
             Log::info("Processing row {$this->processedCount} of {$this->totalRows} ({$progress}%)");
             
-            // Clear memory after each batch
-            if ($this->processedCount % $this->batchSize === 0) {
-                DB::connection()->unsetPDO();
-                gc_collect_cycles();
+            // Broadcast progress
+            event(new ImportProgress($progress, $this->totalRows, $this->processedCount, $this->fileName));
+            
+            // Check memory usage every 1000 rows
+            if ($this->processedCount - $this->lastMemoryCheck >= 1000) {
+                $this->lastMemoryCheck = $this->processedCount;
+                $memoryUsage = memory_get_usage(true) / 1024 / 1024;
+                Log::info("Memory usage: {$memoryUsage} MB");
+                
+                // Clear memory if usage is high
+                if ($memoryUsage > 256) { // 256MB threshold
+                    gc_collect_cycles();
+                    DB::disconnect();
+                    DB::reconnect();
+                }
             }
+        }
+
+        // Skip empty rows
+        if (empty(array_filter($row))) {
+            return null;
         }
 
         return new DataLmtLists([
@@ -69,7 +93,7 @@ class DataLmtListsImport implements ToModel, WithHeadingRow, WithValidation, Wit
             'action_taken_by' => $row['action_taken_by'] ?? null,
             'is_archived' => false,
             'upload_date' => now(),
-            'uploaded_by' => Auth::user()->name
+            'uploaded_by' => Auth::id(),
         ]);
     }
 
