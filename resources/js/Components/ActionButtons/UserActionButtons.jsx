@@ -12,20 +12,20 @@ const UserActionButtons = ({ rowData, showUpdateDialog, showCancelDialog, showRe
         />
         {/* )} */}
         {rowData.roles === 'User' && (
-            <>
-                <Button
-                    onClick={() => showCancelDialog(rowData)}
-                    icon='pi pi-times'
-                    tooltip='Cancel Role'
-                    className='bg-yellow-500 text-white font-medium p-2'
-                />
-                <Button
-                    onClick={() => showStoreDialog(rowData)}
-                    icon='pi pi-plus'
-                    tooltip='Assign Store'
-                    className='bg-green-500 text-white font-medium p-2'
-                />
-            </>
+            <Button
+                onClick={() => showCancelDialog(rowData)}
+                icon='pi pi-times'
+                tooltip='Cancel Role'
+                className='bg-yellow-500 text-white font-medium p-2'
+            />
+        )}
+        {rowData.roles === 'division_leader' && (
+            <Button
+                onClick={() => showStoreDialog(rowData)}
+                icon='pi pi-building'
+                tooltip='Assign Stores'
+                className='bg-green-500 text-white font-medium p-2'
+            />
         )}
         <Button
             onClick={() => showRemoveDialog(rowData)}

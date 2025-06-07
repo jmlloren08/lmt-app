@@ -6,19 +6,49 @@ import NavLink from '@/Components/NavLink';
 import { Link } from '@inertiajs/react';
 
 export default function Authenticated({ user, header, children }) {
-
     const [showNavigationDropDown, setShowNavigationDropDown] = useState(false);
 
-    const fullNavigation = [
-        { name: 'Home', href: route('dashboard'), current: route().current('dashboard') },
-        { name: 'Priorities', href: route('priorities'), current: route().current('priorities') },
-        { name: 'Engaged', href: route('engaged'), current: route().current('engaged') },
-        { name: 'Users', href: route('users'), current: route().current('users') },
-        { name: 'Schools', href: route('schools'), current: route().current('schools') },
-        { name: 'Teachers', href: route('teachers'), current: route().current('teachers') }
+    // Base navigation items that everyone can see
+    const baseNavigation = [
+        { name: 'Home', href: route('dashboard'), current: route().current('dashboard') }
     ];
 
-    const navigation = user.roles === 'Administrator' ? fullNavigation : fullNavigation.filter(item => item.name === 'Home' || item.name === 'Priorities' || item.name === 'Engaged');
+    // Role-specific navigation items
+    const roleNavigation = {
+        administrator: [
+            { name: 'User Management', href: route('user-management'), current: route().current('user-management') },
+            { name: 'Schools', href: route('schools'), current: route().current('schools') },
+            { name: 'Clients', href: route('clients'), current: route().current('clients') },
+            { name: 'Priorities', href: route('priorities'), current: route().current('priorities') },
+            { name: 'Engaged', href: route('engaged'), current: route().current('engaged') }
+        ],
+        division_leader: [
+            { name: 'User Management', href: route('user-management'), current: route().current('user-management') },
+            { name: 'Schools', href: route('schools'), current: route().current('schools') },
+            { name: 'Clients', href: route('clients'), current: route().current('clients') },
+            { name: 'Priorities', href: route('priorities'), current: route().current('priorities') },
+            { name: 'Engaged', href: route('engaged'), current: route().current('engaged') }
+        ],
+        team_leader: [
+            { name: 'User Management', href: route('user-management'), current: route().current('user-management') },
+            { name: 'Schools', href: route('schools'), current: route().current('schools') },
+            { name: 'Clients', href: route('clients'), current: route().current('clients') },
+            { name: 'Priorities', href: route('priorities'), current: route().current('priorities') },
+            { name: 'Engaged', href: route('engaged'), current: route().current('engaged') }
+        ],
+        loan_specialist: [
+            { name: 'Schools', href: route('schools'), current: route().current('schools') },
+            { name: 'Clients', href: route('clients'), current: route().current('clients') },
+            { name: 'Priorities', href: route('priorities'), current: route().current('priorities') },
+            { name: 'Engaged', href: route('engaged'), current: route().current('engaged') }
+        ]
+    };
+
+    // Combine base navigation with role-specific items
+    const navigation = [
+        ...baseNavigation,
+        ...(roleNavigation[user.roles] || [])
+    ];
 
     const userNavigation = [
         { name: 'Profile', href: route('profile.edit'), current: route().current('profile.edit') },

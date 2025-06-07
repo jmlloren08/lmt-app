@@ -22,20 +22,32 @@ const fetchData = async (url, setter, errorMessage) => {
 }
 
 export default function Dashboard({ auth }) {
+    const { roles: userRole, store, area } = auth.user;
+    const isAdminOrDivisionLeader = userRole === 'administrator' || userRole === 'division_leader';
+    const isTeamLeader = userRole === 'team_leader';
+    const isLoanSpecialist = userRole === 'loan_specialist';
 
-    const { roles: userRole, office: store } = auth.user;
     // State for valueFilters and data
     const [valueFilters, setValueFilters] = useState({
-        store: userRole === 'User' ? store : '',
+        store: isAdminOrDivisionLeader ? '' : store,
         district: '',
         school: '',
         account_status: '',
         renewal_remarks: ''
     });
+
+    // Separate state for pie chart filters
+    const [pieChartFilters, setPieChartFilters] = useState({
+        store: isAdminOrDivisionLeader ? '' : store,
+        district: '',
+        school: ''
+    });
+
     // State for stores, districts, and schools
     const [stores, setStores] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [schools, setSchools] = useState([]);
+
     // State for total engaged, priority to engage, target conversion, and actual converted
     const [totalEngaged, setTotalEngaged] = useState(0);
     const [priorityToEngage, setPriorityToEngage] = useState(0);
@@ -66,10 +78,9 @@ export default function Dashboard({ auth }) {
 
     // Effect for fetching initial data
     useEffect(() => {
-        if (userRole === 'Administrator') {
-            fetchData('get-distinct-stores', setStores, 'Error fetching stores: ');            
-        }
-        if (userRole === 'User' && store) {
+        if (isAdminOrDivisionLeader) {
+            fetchData('get-distinct-stores', setStores, 'Error fetching stores: ');
+        } else if (store) {
             setValueFilters(prev => ({ ...prev, store: store }));
             fetchDistricts(store);
         }
@@ -79,8 +90,8 @@ export default function Dashboard({ auth }) {
     const fetchDistricts = (selectedStore) => {
         if (selectedStore) {
             fetchData(
-                `/get-distinct-districts/?store=${selectedStore}`, 
-                setDistricts, 
+                `/get-distinct-districts/?store=${selectedStore}`,
+                setDistricts,
                 'Error fetching districts: '
             );
         } else {
@@ -88,6 +99,7 @@ export default function Dashboard({ auth }) {
         }
         resetValueFilters(['district', 'school', 'account_status', 'renewal_remarks']);
     }
+
     // Effect for fetching schools whenever district changes
     useEffect(() => {
         if (valueFilters.district) {
@@ -106,6 +118,11 @@ export default function Dashboard({ auth }) {
     // Debounce filter update
     const updateFilter = debounce((key, value) => {
         setValueFilters(prev => ({ ...prev, [key]: value }));
+        
+        // Update pie chart filters only for store, district, and school
+        if (['store', 'district', 'school'].includes(key)) {
+            setPieChartFilters(prev => ({ ...prev, [key]: value }));
+        }
     }, 300);
 
     useEffect(() => {
@@ -151,28 +168,14 @@ export default function Dashboard({ auth }) {
                         link={route('engaged')}
                         bgColor='bg-green-500'
                     />
-                    <DashboardCard
-                        title='Target Conversion'
-                        count={targetConverted}
-                        loading={loadingStates.targetConverted}
-                        link={route('target-conversion')}
-                        bgColor='bg-red-500'
-                    />
-                    <DashboardCard
-                        title='Actual Converted'
-                        count={actualConverted}
-                        loading={loadingStates.actualConverted}
-                        link={route('actual-converted')}
-                        bgColor='bg-yellow-500'
-                    />
                 </div>
                 <div className='grid grid-cols sm:grid-cols-2 gap-2 mb-4 text-center items-center justify-center'>
                     <div className='bg-white shadow-sm sm:rounded-lg p-6 mb-4'>
                         {/* store selector */}
-                        {userRole === 'Administrator' ? (
+                        {isAdminOrDivisionLeader ? (
                             <SelectFilter
                                 label='Store Name:'
-                                options={stores.map((s) => ({ value: s.office, label: s.office }))}
+                                options={stores.map((s) => ({ value: s.store, label: s.store }))}
                                 value={valueFilters.store}
                                 onChange={(value) => {
                                     updateFilter('store', value);
@@ -180,14 +183,27 @@ export default function Dashboard({ auth }) {
                                 }}
                             />
                         ) : (
-                            <div className="flex items-center mb-4">
-                                <label className='text-gray-900'>STORE NAME:</label>
-                                <input
-                                    type='text'
-                                    value={valueFilters.store}
-                                    className='relative z-20 w-full rounded border py-3 px-5 outline-none'
-                                    readOnly
-                                />
+                            <div className="space-y-4 mb-4">
+                                <div className="flex items-center mb-2">
+                                    <label className='text-gray-900'>STORE NAME:</label>
+                                    <input
+                                        type='text'
+                                        value={valueFilters.store}
+                                        className='relative z-20 w-full rounded border py-3 px-5 outline-none'
+                                        readOnly
+                                    />
+                                </div>
+                                {isLoanSpecialist && area && (
+                                    <div className="flex items-center">
+                                        <label className='text-gray-900'>AREA NAME:</label>
+                                        <input
+                                            type='text'
+                                            value={area}
+                                            className='relative z-20 w-full rounded border py-3 px-5 outline-none'
+                                            readOnly
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
                         {/* district selector */}
@@ -222,7 +238,7 @@ export default function Dashboard({ auth }) {
                     {/* chart */}
                     <div className='bg-white shadow-sm sm:rounded-lg p-6 mb-4'>
                         <PieChart
-                            valueFilters={valueFilters}
+                            valueFilters={pieChartFilters}
                         />
                     </div>
                 </div>

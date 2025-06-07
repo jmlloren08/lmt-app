@@ -23,7 +23,7 @@ const AssignStoreDialog = ({ visible, stores, selectedStore, setSelectedStore, o
             >
                 <option value="" disabled>Select</option>
                 {stores.map((store, index) => (
-                    <option key={index} value={store.office}>{store.office}</option>
+                    <option key={index} value={store.store}>{store.store}</option>
                 ))}
             </select>
         </div>

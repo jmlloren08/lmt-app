@@ -11,18 +11,18 @@ class DataLmtLists extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
-        'office',
+        'store',
         'name',
         'account_status',
         'renewal_remarks',
         'school',
         'district',
+        'area',
+        'assigned_to',
+        'is_priority',
+        'priority_requested_at',
+        'priority_requested_by',
         'gtd',
         'prncpl',
         'tsndng',
@@ -35,15 +35,23 @@ class DataLmtLists extends Model
         'ntprcd',
         'mntd',
         'client_status',
-        'area',
         'engagement_status',
         'progress_report',
         'priority_to_engage',
         'action_taken_by',
         'is_archived',
         'upload_date',
-        'uploaded_by',
+        'uploaded_by'
     ];
+
+    protected $casts = [
+        'is_priority' => 'boolean',
+        'priority_requested_at' => 'timestamp',
+        'is_archived' => 'boolean',
+        'upload_date' => 'timestamp',
+    ];
+
+
     public static function processUpload($file)
     {
         // Archive existing records
@@ -52,12 +60,13 @@ class DataLmtLists extends Model
         // Import new data
         Excel::import(new DataLmtListsImport, $file);
     }
-    public function getCurrentData()
+
+    public static function getStoresList()
     {
-        return self::where('is_archived', false)->get();
-    }
-    public function getArchivedData()
-    {
-        return self::where('is_archived', true)->get();
+        return self::where('is_archived', false)
+            ->select('store')
+            ->distinct()
+            ->orderBy('store')
+            ->pluck('store');
     }
 }

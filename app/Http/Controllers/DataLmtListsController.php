@@ -21,6 +21,7 @@ class DataLmtListsController extends Controller
             return response()->json(['message' => 'Failed to render upload form'], 500);
         }
     }
+    
     public function upload(Request $request)
     {
         // Validate the request
@@ -113,24 +114,25 @@ class DataLmtListsController extends Controller
     public function getDistinctStore()
     {
         try {
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
 
-            $userRole = Auth::user()->roles;
-            $userOffice = Auth::user()->office;
-
-            $userRole === 'Administrator' ?
-                $offices = DataLmtLists::select('office')
+            $query = DataLmtLists::select('store')
                 ->distinct()
-                ->orderBy('office', 'asc')
-                ->get()
-                :
-                $offices = DataLmtLists::where('office', $userOffice)
-                ->distinct()
-                ->orderBy('office', 'asc')
-                ->get();
+                ->orderBy('store', 'asc');
 
-            return response()->json($offices);
+            // Administrator and Division Leader can see all stores
+            if ($userRole === 'administrator' || $userRole === 'division_leader') {
+                return response()->json($query->get());
+            }
+
+            // Team Leader and Loan Specialist can only see their assigned store
+            if ($userRole === 'team_leader' || $userRole === 'loan_specialist') {
+                return response()->json([['store' => $user->store]]);
+            }
+
+            return response()->json([]);
         } catch (\Exception $e) {
-
             Log::error("Error fetching stores: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
@@ -138,23 +140,29 @@ class DataLmtListsController extends Controller
     public function getDistinctDistrict(Request $request)
     {
         try {
-
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
             $store = $request->store;
 
             if (!$store) {
                 return response()->json(['message' => 'Store parameter is required'], 400);
             }
 
-            $districts = DataLmtLists::where('office', $store)
+            $query = DataLmtLists::where('store', $store)
                 ->whereNot('district', 'SCHOOL TO BE IDENTIFY')
                 ->select('district')
                 ->distinct()
-                ->orderBy('district', 'asc')
-                ->get();
+                ->orderBy('district', 'asc');
 
-            return response()->json($districts);
+            // All roles can see districts for their assigned store
+            if ($userRole === 'administrator' || $userRole === 'division_leader' || 
+                ($userRole === 'team_leader' && $store === $user->store) ||
+                ($userRole === 'loan_specialist' && $store === $user->store)) {
+                return response()->json($query->get());
+            }
+
+            return response()->json(['message' => 'Unauthorized access'], 403);
         } catch (\Exception $e) {
-
             Log::error("Error fetching districts: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
@@ -181,6 +189,8 @@ class DataLmtListsController extends Controller
     public function getListWhereFilters(Request $request)
     {
         try {
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
 
             $validated = $request->validate([
                 'store' => ['nullable', 'string'],
@@ -190,17 +200,18 @@ class DataLmtListsController extends Controller
                 'renewal_remarks' => ['nullable', 'string']
             ]);
 
-            $filters = [
-                'office' => $validated['store'],
-                'district' => $validated['district'],
-                'school' => $validated['school'],
-                'account_status' => $validated['account_status'],
-                'renewal_remarks' => $validated['renewal_remarks']
-            ];
-
             $query = DataLmtLists::query();
 
-            foreach ($filters as $column => $value) {
+            // Apply role-based filters
+            if ($userRole === 'team_leader') {
+                $query->where('store', $user->store);
+            } elseif ($userRole === 'loan_specialist') {
+                $query->where('store', $user->store)
+                      ->where('area', $user->area);
+            }
+
+            // Apply user filters
+            foreach ($validated as $column => $value) {
                 $query->when($value, function ($q) use ($column, $value) {
                     return $q->where($column, $value);
                 });
@@ -212,19 +223,29 @@ class DataLmtListsController extends Controller
 
             return response()->json(['lists' => $lists]);
         } catch (\Exception $e) {
-
-            Log::error("Error fetching schools: " . $e->getMessage());
+            Log::error("Error fetching filtered data: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }
     public function getAccountStatusWhereFilters(Request $request)
     {
         try {
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
 
             $query = DataLmtLists::query();
 
+            // Apply role-based filters
+            if ($userRole === 'team_leader') {
+                $query->where('store', $user->store);
+            } elseif ($userRole === 'loan_specialist') {
+                $query->where('store', $user->store)
+                      ->where('area', $user->area);
+            }
+
+            // Apply store, district, and school filters for pie chart
             if ($request->filled('store')) {
-                $query->where('office', $request->store);
+                $query->where('store', $request->store);
             }
             if ($request->filled('district')) {
                 $query->where('district', $request->district);
@@ -232,11 +253,16 @@ class DataLmtListsController extends Controller
             if ($request->filled('school')) {
                 $query->where('school', $request->school);
             }
-            if ($request->filled('account_status')) {
-                $query->where('account_status', $request->account_status);
-            }
-            if ($request->filled('renewal_remarks')) {
-                $query->where('renewal_remarks', $request->renewal_remarks);
+
+            // Only apply account_status and renewal_remarks filters if they are provided
+            // and if this is not a pie chart request
+            if (!$request->isPieChart) {
+                if ($request->filled('account_status')) {
+                    $query->where('account_status', $request->account_status);
+                }
+                if ($request->filled('renewal_remarks')) {
+                    $query->where('renewal_remarks', $request->renewal_remarks);
+                }
             }
 
             $statuses = [
@@ -258,7 +284,6 @@ class DataLmtListsController extends Controller
 
             return response()->json(['counts' => $counts]);
         } catch (\Exception $e) {
-
             Log::error("Error fetching account status: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
@@ -270,7 +295,7 @@ class DataLmtListsController extends Controller
             $query = DataLmtLists::query();
 
             if ($request->filled('store')) {
-                $query->where('office', $request->store);
+                $query->where('store', $request->store);
             }
             if ($request->filled('district')) {
                 $query->where('district', $request->district);
@@ -368,20 +393,22 @@ class DataLmtListsController extends Controller
     public function getCountTotalEngaged()
     {
         try {
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
 
-            $userRole = Auth::user()->roles;
-            $userStore = Auth::user()->office;
+            $query = DataLmtLists::where('engagement_status', 'Engaged');
 
-            $userRole === 'Administrator' ?
-                $countTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')->count()
-                :
-                $countTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')
-                ->where('office', $userStore)
-                ->count();
+            // Apply role-based filters
+            if ($userRole === 'team_leader') {
+                $query->where('store', $user->store);
+            } elseif ($userRole === 'loan_specialist') {
+                $query->where('store', $user->store)
+                      ->where('area', $user->area);
+            }
 
-            return response()->json($countTotalEngaged);
+            $count = $query->count();
+            return response()->json($count);
         } catch (\Exception $e) {
-
             Log::error("Error getting count data: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
@@ -389,20 +416,22 @@ class DataLmtListsController extends Controller
     public function getCountPriorityToEngage()
     {
         try {
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
 
-            $userRole = Auth::user()->roles;
-            $userStore = Auth::user()->office;
+            $query = DataLmtLists::where('priority_to_engage', 'Yes');
 
-            $userRole === 'Administrator' ?
-                $countPriorityToEngage = DataLmtLists::where('priority_to_engage', 'Yes')->count()
-                :
-                $countPriorityToEngage = DataLmtLists::where('priority_to_engage', 'Yes')
-                ->where('office', $userStore)
-                ->count();
+            // Apply role-based filters
+            if ($userRole === 'team_leader') {
+                $query->where('store', $user->store);
+            } elseif ($userRole === 'loan_specialist') {
+                $query->where('store', $user->store)
+                      ->where('area', $user->area);
+            }
 
-            return response()->json($countPriorityToEngage);
+            $count = $query->count();
+            return response()->json($count);
         } catch (\Exception $e) {
-
             Log::error("Error getting count data: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
@@ -410,25 +439,24 @@ class DataLmtListsController extends Controller
     public function getListForTotalEngaged()
     {
         try {
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
 
-            $userRole = Auth::user()->roles;
-            $userStore = Auth::user()->office;
+            $query = DataLmtLists::where('engagement_status', 'Engaged')
+                ->select('id', 'store', 'district', 'school', 'name', 'account_status', 'renewal_remarks', 'engagement_status', 'progress_report', 'action_taken_by')
+                ->orderBy('updated_at', 'desc');
 
-            $userRole === 'Administrator' ?
-                $listOfTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')
-                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'renewal_remarks', 'engagement_status', 'progress_report', 'action_taken_by')
-                ->orderBy('updated_at', 'desc')
-                ->get()
-                :
-                $listOfTotalEngaged = DataLmtLists::where('engagement_status', 'Engaged')
-                ->where('office', $userStore)
-                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'renewal_remarks', 'engagement_status', 'progress_report', 'action_taken_by')
-                ->orderBy('updated_at', 'desc')
-                ->get();
+            // Apply role-based filters
+            if ($userRole === 'team_leader') {
+                $query->where('store', $user->store);
+            } elseif ($userRole === 'loan_specialist') {
+                $query->where('store', $user->store)
+                      ->where('area', $user->area);
+            }
 
-            return response()->json($listOfTotalEngaged);
+            $list = $query->get();
+            return response()->json($list);
         } catch (\Exception $e) {
-
             Log::error("Error getting list: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
@@ -436,26 +464,55 @@ class DataLmtListsController extends Controller
     public function getListForPriorityToEngage()
     {
         try {
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
 
-            $userRole = Auth::user()->roles;
-            $userStore = Auth::user()->office;
+            $query = DataLmtLists::where('priority_to_engage', 'Yes')
+                ->select('id', 'store', 'district', 'school', 'name', 'account_status', 'renewal_remarks')
+                ->orderBy('updated_at', 'desc');
 
-            $userRole === 'Administrator' ?
-                $listOfPriorityToEngage = DataLmtLists::where('priority_to_engage', 'Yes')
-                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'renewal_remarks')
-                ->orderBy('updated_at', 'desc')
-                ->get()
-                :
-                $listOfPriorityToEngage = DataLmtLists::where('priority_to_engage', 'Yes')
-                ->where('office', $userStore)
-                ->select('id', 'office', 'district', 'school', 'name', 'account_status', 'renewal_remarks')
-                ->orderBy('updated_at', 'desc')
-                ->get();
+            // Apply role-based filters
+            if ($userRole === 'team_leader') {
+                $query->where('store', $user->store);
+            } elseif ($userRole === 'loan_specialist') {
+                $query->where('store', $user->store)
+                      ->where('area', $user->area);
+            }
 
-            return response()->json($listOfPriorityToEngage);
+            $list = $query->get();
+            return response()->json($list);
         } catch (\Exception $e) {
-
             Log::error("Error getting list: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function getDistinctArea(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
+            $store = $request->store;
+            $district = $request->district;
+
+            if (!$store || !$district) {
+                return response()->json(['message' => 'Store and district parameters are required'], 400);
+            }
+
+            $query = DataLmtLists::where('store', $store)
+                ->where('district', $district)
+                ->whereNot('area', 'SCHOOL TO BE IDENTIFY')
+                ->select('area')
+                ->distinct()
+                ->orderBy('area', 'asc');
+
+            // Administrator can see all areas
+            if ($userRole === 'administrator') {
+                return response()->json($query->get());
+            }
+
+            return response()->json(['message' => 'Unauthorized access'], 403);
+        } catch (\Exception $e) {
+            Log::error("Error fetching areas: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }

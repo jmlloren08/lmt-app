@@ -68,7 +68,7 @@ class DataLmtListsImport implements ToModel, WithHeadingRow, WithValidation, Wit
         }
 
         return new DataLmtLists([
-            'office' => $row['office'] ?? null,
+            'store' => $row['store'] ?? null,
             'name' => $row['name'] ?? null,
             'account_status' => $row['account_status'] ?? null,
             'renewal_remarks' => $row['renewal_remarks'] ?? null,
@@ -100,7 +100,7 @@ class DataLmtListsImport implements ToModel, WithHeadingRow, WithValidation, Wit
     public function rules(): array
     {
         return [
-            'office' => 'required|string',
+            'store' => 'required|string',
             'name' => 'required|string',
             'account_status' => 'required|string',
             // 'renewal_remarks' => 'required|string',

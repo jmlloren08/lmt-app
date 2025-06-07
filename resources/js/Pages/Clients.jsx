@@ -7,7 +7,7 @@ import { Toast } from 'primereact/toast';
 import AuthenticatedLayout from '../Layouts/AuthenticatedLayout';
 import UpdateSchoolDialog from '../Components/Dialogs/UpdateSchoolDialog';
 
-export default function Schools({ auth }) {
+export default function Clients({ auth }) {
 
     const [teachers, setTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ export default function Schools({ auth }) {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const response = await axios.get('/get-list-of-all-teachers');
+                const response = await axios.get('/get-list-of-all-clients');
                 setTeachers(response.data);
                 setLoading(false);
             } catch (error) {
@@ -36,7 +36,7 @@ export default function Schools({ auth }) {
 
     const header = (
         <div className="flex justify-content-between align-items-center">
-            <h1 className='font-semibold p-4'>List of Teachers (Schools to be identified)</h1>
+            <h1 className='font-semibold p-4'>List of Clients (Schools to be identified)</h1>
         </div>
     );
 

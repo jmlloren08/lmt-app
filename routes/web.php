@@ -4,95 +4,105 @@ use App\Http\Controllers\DataLmtListsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\TeacherController;
-use App\Http\Controllers\UserController;
-use App\Http\Middleware\CheckRoles;
+use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\StoreManagementController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    // view pages
-    // view pages / dashboard
-    Route::get('/', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
-    // view pages / engaged
-    Route::get('/reports/engaged', function () {
-        return Inertia::render('Engaged');
-    })->name('engaged');
-    // view pages / priorities
-    Route::get('/reports/priorities', function () {
-        return Inertia::render('Priorities');
-    })->name('priorities');
-    // view pages / total conversion
-    Route::get('/reports/target-conversion', function () {
-        return Inertia::render('TargetConversion');
-    })->name('target-conversion');
-    // view pages / actual converted
-    Route::get('/reports/actual-converted', function () {
-        return Inertia::render('ActualConverted');
-    })->name('actual-converted');
-    // view page / upload form
-    Route::get('/data-lmt-list/upload-form', function () {
-        return Inertia::render('DataLmtList/UploadForm');
-    })->name('upload-form');
-
-    // view pages / users
-    Route::middleware([CheckRoles::class])->group(function () {
-        Route::get('/users', function () {
-            return Inertia::render('Users');
-        })->name('users');
-        Route::get('/schools', function () {
-            return Inertia::render('Schools');
-        })->name('schools');
-        Route::get('/teachers', function () {
-            return Inertia::render('Teachers');
-        })->name('teachers');
-        Route::get('/get-users-list', [UserController::class, 'getUsers']);
-    });
-
-    // get data
-    Route::get('/get-filtered-data', [DataLmtListsController::class, 'getFilteredData']);
-    // get distinct data
-    Route::get('/get-distinct-stores', [DataLmtListsController::class, 'getDistinctStore']);
-    Route::get('/get-distinct-districts', [DataLmtListsController::class, 'getDistinctDistrict']);
-    Route::get('/get-distinct-schools', [DataLmtListsController::class, 'getDistinctSchool']);
-    // 
-    Route::get('/get-list-where-filters', [DataLmtListsController::class, 'getListWhereFilters']);
-    Route::get('/get-account-status-where-filters', [DataLmtListsController::class, 'getAccountStatusWhereFilters']);
-    Route::get('/get-count-borrowers-where-filters', [DataLmtListsController::class, 'getCountBorrowersWhereFilters']);
-    Route::get('/get-other-data/{id}', [DataLmtListsController::class, 'getOtherData']);
-    Route::get('/get-count-total-engaged', [DataLmtListsController::class, 'getCountTotalEngaged']);
-    Route::get('/get-count-priority-to-engage', [DataLmtListsController::class, 'getCountPriorityToEngage']);
-    Route::get('/get-list-for-total-engaged', [DataLmtListsController::class, 'getListForTotalEngaged']);
-    Route::get('/get-list-for-priority-to-engage', [DataLmtListsController::class, 'getListForPriorityToEngage']);
-    Route::get('/get-list-of-all-schools', [SchoolController::class, 'index']);
-    Route::get('/get-list-of-all-teachers', [TeacherController::class, 'index']);
-    Route::get('/get-school-profile/{id}', [SchoolController::class, 'show']);
-    // update data
-    Route::patch('/update-user-role/{id}', [UserController::class, 'update']);
-    Route::patch('/cancel-user-role/{id}', [UserController::class, 'cancel']);
-    Route::patch('/assign-user-store/{id}', [UserController::class, 'assignStore']);
-    Route::patch('/save-engage-data/{id}', [DataLmtListsController::class, 'saveEngageData']);
-    Route::patch('/update-priority-to-engage/{id}', [DataLmtListsController::class, 'updatePriorityToEngage']);
-    Route::patch('/update-teacher-school/{id}', [TeacherController::class, 'update']);
-    // remove data
-    Route::delete('/remove-user/{id}', [UserController::class, 'delete']);
-    // profile information
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    // upload csv
-    Route::post('/data-lmt-list/upload', [DataLmtListsController::class, 'upload'])->name('data-lmt-list.upload');
-    Route::get('/data-lmt-list/current', [DataLmtListsController::class, 'getCurrentData']);
-    Route::get('/data-lmt-list/archived', [DataLmtListsController::class, 'getArchivedData']);
-    // Route::get('/check-limits', function() {
-    //     return [
-    //         'post_max_size' => ini_get('post_max_size'),
-    //         'upload_max_filesize' => ini_get('upload_max_filesize'),
-    //         'memory_limit' => ini_get('memory_limit'),
-    //         'max_execution_time' => ini_get('max_execution_time'),
-    //     ];
-    // });
+// Public routes
+Route::get('/', function () {
+    return redirect()->route('login');
 });
 
+// Authentication Routes
 require __DIR__ . '/auth.php';
+
+// Protected routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    // No Authorization Route
+    Route::get('/no-authorization', function () {
+        return Inertia::render('NoAuthorization');
+    })->name('no-authorization');
+
+    // Routes that require a valid role
+    Route::middleware(['role'])->group(function () {
+        // Dashboard Route
+        Route::get('/dashboard', function () {
+            return Inertia::render('Dashboard');
+        })->name('dashboard');
+        // Priorities Route
+        Route::get('/priorities', function () {
+            return Inertia::render('Priorities');
+        })->name('priorities');
+        // Engaged Route
+        Route::get('/engaged', function () {
+            return Inertia::render('Engaged');
+        })->name('engaged');
+        // School list
+        Route::get('/school-list', function () {
+            return Inertia::render('Schools');
+        })->name('schools');
+        // Client list
+        Route::get('/client-list', function () {
+            return Inertia::render('Clients');
+        })->name('clients');
+
+        // User Management Routes (Role Assignment Only)
+        Route::middleware(['role:administrator,division_leader,team_leader'])->group(function () {
+            Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management');
+            Route::get('/user-management/users', [UserManagementController::class, 'getUsers']);
+            Route::patch('/users/{user}/assign-role', [UserManagementController::class, 'assignRole'])->name('users.assign-role');
+            Route::delete('/users/{user}', [UserManagementController::class, 'delete'])->name('users.delete');
+        });
+
+        // Store Management Routes
+        Route::middleware(['role:administrator,division_leader,team_leader'])->group(function () {
+            Route::get('/store-management', [StoreManagementController::class, 'index'])->name('store-management');
+            Route::get('/store-management/distinct-stores', [StoreManagementController::class, 'getDistinctStores']);
+            Route::get('/store-management/areas/{storeName}', [StoreManagementController::class, 'getAreasForStore']);
+            Route::patch('/users/{user}/assign-store', [StoreManagementController::class, 'assignStore'])->name('stores.assign-store');
+            Route::delete('/stores/{store}', [StoreManagementController::class, 'delete'])->name('stores.delete');
+        });
+
+        // Data Retrieval Routes
+        Route::controller(DataLmtListsController::class)->group(function () {
+            Route::get('/get-filtered-data', 'getFilteredData');
+            Route::get('/get-distinct-stores', 'getDistinctStore');
+            Route::get('/get-distinct-districts', 'getDistinctDistrict');
+            Route::get('/get-distinct-schools', 'getDistinctSchool');
+            Route::get('/get-list-where-filters', 'getListWhereFilters');
+            Route::get('/get-account-status-where-filters', 'getAccountStatusWhereFilters');
+            Route::get('/get-count-borrowers-where-filters', 'getCountBorrowersWhereFilters');
+            Route::get('/get-other-data/{id}', 'getOtherData');
+            Route::get('/get-count-total-engaged', 'getCountTotalEngaged');
+            Route::get('/get-count-priority-to-engage', 'getCountPriorityToEngage');
+            Route::get('/get-list-for-total-engaged', 'getListForTotalEngaged');
+            Route::get('/get-list-for-priority-to-engage', 'getListForPriorityToEngage');
+        });
+
+        // School and Client Routes
+        Route::get('/get-list-of-all-schools', [SchoolController::class, 'index']);
+        Route::get('/get-list-of-all-clients', [TeacherController::class, 'index']);
+        Route::get('/get-school-profile/{id}', [SchoolController::class, 'show']);
+
+        // Data Update Routes
+        Route::patch('/save-engage-data/{id}', [DataLmtListsController::class, 'saveEngageData']);
+        Route::patch('/update-priority-to-engage/{id}', [DataLmtListsController::class, 'updatePriorityToEngage']);
+        Route::patch('/update-teacher-school/{id}', [TeacherController::class, 'update']);
+
+        // Profile Routes
+        Route::controller(ProfileController::class)->group(function () {
+            Route::get('/profile', 'edit')->name('profile.edit');
+            Route::patch('/profile', 'update')->name('profile.update');
+            Route::delete('/profile', 'destroy')->name('profile.destroy');
+        });
+
+        // Data Upload Routes
+        Route::controller(DataLmtListsController::class)->group(function () {
+            Route::get('/data-lmt-list/upload', 'createUploadForm')->name('upload-form');
+            Route::post('/data-lmt-list/upload', 'upload')->name('data-lmt-list.upload');
+            Route::get('/data-lmt-list/current', 'getCurrentData');
+            Route::get('/data-lmt-list/archived', 'getArchivedData');
+        });
+    });
+});

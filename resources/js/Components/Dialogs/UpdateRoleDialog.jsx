@@ -23,7 +23,9 @@ const UpdateDialog = ({ visible, selectedRole, setSelectedRole, onSave, onClose 
             >
                 <option value=''>Select</option>
                 <option value='User'>User</option>
-                <option value='Administrator'>Administrator</option>
+                <option value='Division Leader'>Division Leader</option>
+                <option value='Team Leader'>Team Leader</option>
+                <option value='Loan Specialist'>Loan Specialist</option>
             </select>
         </div>
     </Dialog>
