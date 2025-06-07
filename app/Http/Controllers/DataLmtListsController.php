@@ -8,8 +8,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\DataLmtListsImport;
 use App\Jobs\ProcessDataLmtListsImport;
 
 class DataLmtListsController extends Controller
@@ -40,12 +38,12 @@ class DataLmtListsController extends Controller
 
         try {
             Log::info("Starting file upload process");
-            
+
             // Process the file upload
             $file = $request->file('file');
             $fileName = $file->getClientOriginalName();
             $fileSize = $file->getSize();
-            
+
             Log::info("File details: " . json_encode([
                 'name' => $fileName,
                 'size' => $fileSize,
@@ -84,7 +82,6 @@ class DataLmtListsController extends Controller
             ProcessDataLmtListsImport::dispatch($fullPath, $totalRows, $fileName);
 
             return redirect()->route('upload-form')->with('success', 'File is being processed. You will be notified once the import is complete.');
-
         } catch (\Exception $e) {
             Log::error("Error processing file: " . $e->getMessage());
             Log::error("Stack trace: " . $e->getTraceAsString());
@@ -143,6 +140,11 @@ class DataLmtListsController extends Controller
         try {
 
             $store = $request->store;
+
+            if (!$store) {
+                return response()->json(['message' => 'Store parameter is required'], 400);
+            }
+
             $districts = DataLmtLists::where('office', $store)
                 ->whereNot('district', 'SCHOOL TO BE IDENTIFY')
                 ->select('district')

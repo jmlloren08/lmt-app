@@ -52,9 +52,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // get data
     Route::get('/get-filtered-data', [DataLmtListsController::class, 'getFilteredData']);
+    // get distinct data
     Route::get('/get-distinct-stores', [DataLmtListsController::class, 'getDistinctStore']);
     Route::get('/get-distinct-districts', [DataLmtListsController::class, 'getDistinctDistrict']);
     Route::get('/get-distinct-schools', [DataLmtListsController::class, 'getDistinctSchool']);
+    // 
     Route::get('/get-list-where-filters', [DataLmtListsController::class, 'getListWhereFilters']);
     Route::get('/get-account-status-where-filters', [DataLmtListsController::class, 'getAccountStatusWhereFilters']);
     Route::get('/get-count-borrowers-where-filters', [DataLmtListsController::class, 'getCountBorrowersWhereFilters']);
@@ -83,14 +85,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/data-lmt-list/upload', [DataLmtListsController::class, 'upload'])->name('data-lmt-list.upload');
     Route::get('/data-lmt-list/current', [DataLmtListsController::class, 'getCurrentData']);
     Route::get('/data-lmt-list/archived', [DataLmtListsController::class, 'getArchivedData']);
-    Route::get('/check-limits', function() {
-        return [
-            'post_max_size' => ini_get('post_max_size'),
-            'upload_max_filesize' => ini_get('upload_max_filesize'),
-            'memory_limit' => ini_get('memory_limit'),
-            'max_execution_time' => ini_get('max_execution_time'),
-        ];
-    });
+    // Route::get('/check-limits', function() {
+    //     return [
+    //         'post_max_size' => ini_get('post_max_size'),
+    //         'upload_max_filesize' => ini_get('upload_max_filesize'),
+    //         'memory_limit' => ini_get('memory_limit'),
+    //         'max_execution_time' => ini_get('max_execution_time'),
+    //     ];
+    // });
 });
 
 require __DIR__ . '/auth.php';

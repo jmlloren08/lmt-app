@@ -15,6 +15,7 @@ const fetchData = async (url, setter, errorMessage) => {
     try {
         const response = await axios.get(url);
         setter(response.data);
+        return response.data;
     } catch (error) {
         console.error(`${errorMessage}`, error);
     }
@@ -66,7 +67,7 @@ export default function Dashboard({ auth }) {
     // Effect for fetching initial data
     useEffect(() => {
         if (userRole === 'Administrator') {
-            fetchData('get-distinct-stores', setStores, 'Error fetching stores: ');
+            fetchData('get-distinct-stores', setStores, 'Error fetching stores: ');            
         }
         if (userRole === 'User' && store) {
             setValueFilters(prev => ({ ...prev, store: store }));
@@ -77,7 +78,11 @@ export default function Dashboard({ auth }) {
     // Fetch districts based on selected store
     const fetchDistricts = (selectedStore) => {
         if (selectedStore) {
-            fetchData(`/get-distinct-districts/?store=${selectedStore}`, setDistricts, 'Error fetching districts: ');
+            fetchData(
+                `/get-distinct-districts/?store=${selectedStore}`, 
+                setDistricts, 
+                'Error fetching districts: '
+            );
         } else {
             setDistricts([]);
         }
@@ -112,7 +117,7 @@ export default function Dashboard({ auth }) {
     // Fetch total engaged and priority to engage
     const fetchDashboardCounts = () => {
         setLoadingStates((prev) => ({ ...prev, totalEngaged: true, priorityToEngage: true }));
-        fetchData('/get-count-total-engaged', setTotalEngaged, 'Error fetchin total engaged')
+        fetchData('/get-count-total-engaged', setTotalEngaged, 'Error fetching total engaged')
             .finally(() => setLoadingStates((prev) => ({ ...prev, totalEngaged: false })));
         fetchData('/get-count-priority-to-engage', setPriorityToEngage, 'Error fetching priority to engage')
             .finally(() => setLoadingStates((prev) => ({ ...prev, priorityToEngage: false })));
@@ -169,7 +174,10 @@ export default function Dashboard({ auth }) {
                                 label='Store Name:'
                                 options={stores.map((s) => ({ value: s.office, label: s.office }))}
                                 value={valueFilters.store}
-                                onChange={(value) => updateFilter('store', value)}
+                                onChange={(value) => {
+                                    updateFilter('store', value);
+                                    fetchDistricts(value);
+                                }}
                             />
                         ) : (
                             <div className="flex items-center mb-4">
