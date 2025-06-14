@@ -6,111 +6,9 @@ use App\Models\DataLmtLists;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
-use Inertia\Inertia;
-use App\Jobs\ProcessDataLmtListsImport;
 
 class DataLmtListsController extends Controller
 {
-    public function createUploadForm()
-    {
-        try {
-            return Inertia::render('DataLmtList/UploadForm');
-        } catch (\Exception $e) {
-            Log::error('Error rendering upload form: ' . $e->getMessage());
-            return response()->json(['message' => 'Failed to render upload form'], 500);
-        }
-    }
-    
-    public function upload(Request $request)
-    {
-        // Validate the request
-        $validator = Validator::make($request->all(), [
-            'file' => 'required|file|mimes:csv,xlsx,xls|max:15360' // 15MB
-        ]);
-
-        if ($validator->fails()) {
-            Log::error("File upload validation failed: " . json_encode($validator->errors()));
-            return response()->json([
-                'message' => 'Invalid file format or file too large. Please upload a CSV or Excel file under 15MB.',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            Log::info("Starting file upload process");
-
-            // Process the file upload
-            $file = $request->file('file');
-            $fileName = $file->getClientOriginalName();
-            $fileSize = $file->getSize();
-
-            Log::info("File details: " . json_encode([
-                'name' => $fileName,
-                'size' => $fileSize,
-                'type' => $file->getMimeType()
-            ]));
-
-            // Check if there are any records to archive
-            $existingRecords = DataLmtLists::where('is_archived', false)->count();
-            Log::info("Found {$existingRecords} existing records to archive");
-
-            if ($existingRecords > 0) {
-                Log::info("Archiving existing records");
-                DataLmtLists::where('is_archived', false)->update(['is_archived' => true]);
-            } else {
-                Log::info("No existing records to archive");
-            }
-
-            // Store the file temporarily
-            $tempPath = $file->store('temp');
-            $fullPath = storage_path('app/' . $tempPath);
-
-            // Get total rows without loading the entire file
-            $totalRows = 0;
-            $handle = fopen($fullPath, 'r');
-            if ($handle) {
-                while (fgets($handle) !== false) {
-                    $totalRows++;
-                }
-                fclose($handle);
-            }
-            $totalRows--; // Subtract header row
-
-            Log::info("Total rows to process: {$totalRows}");
-
-            // Dispatch the import job
-            ProcessDataLmtListsImport::dispatch($fullPath, $totalRows, $fileName);
-
-            return redirect()->route('upload-form')->with('success', 'File is being processed. You will be notified once the import is complete.');
-        } catch (\Exception $e) {
-            Log::error("Error processing file: " . $e->getMessage());
-            Log::error("Stack trace: " . $e->getTraceAsString());
-            return response()->json([
-                'message' => 'Error processing file: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-    public function getCurrentData()
-    {
-        try {
-            $data = DataLmtLists::getCurrentData();
-            return response()->json(['data' => $data]);
-        } catch (\Exception $e) {
-            Log::error("Error fetching current data: " . $e->getMessage());
-            return response()->json(['message' => 'Internal server error'], 500);
-        }
-    }
-    public function getArchivedData()
-    {
-        try {
-            $data = DataLmtLists::getArchivedData();
-            return response()->json(['data' => $data]);
-        } catch (\Exception $e) {
-            Log::error("Error fetching archived data: " . $e->getMessage());
-            return response()->json(['message' => 'Internal server error'], 500);
-        }
-    }
     public function getDistinctStore()
     {
         try {
@@ -155,9 +53,11 @@ class DataLmtListsController extends Controller
                 ->orderBy('district', 'asc');
 
             // All roles can see districts for their assigned store
-            if ($userRole === 'administrator' || $userRole === 'division_leader' || 
+            if (
+                $userRole === 'administrator' || $userRole === 'division_leader' ||
                 ($userRole === 'team_leader' && $store === $user->store) ||
-                ($userRole === 'loan_specialist' && $store === $user->store)) {
+                ($userRole === 'loan_specialist' && $store === $user->store)
+            ) {
                 return response()->json($query->get());
             }
 
@@ -207,7 +107,7 @@ class DataLmtListsController extends Controller
                 $query->where('store', $user->store);
             } elseif ($userRole === 'loan_specialist') {
                 $query->where('store', $user->store)
-                      ->where('area', $user->area);
+                    ->where('area', $user->area);
             }
 
             // Apply user filters
@@ -217,8 +117,15 @@ class DataLmtListsController extends Controller
                 });
             }
 
+            // Exclude schools with name = "SCHOOLS TO BE IDENTIFIED"
+            // $query->whereNot('school', 'SCHOOL TO BE IDENTIFY')
+            //     ->whereNot('district', 'SCHOOL TO BE IDENTIFY');
+
             $lists = $query->select('id', 'name', 'account_status', 'renewal_remarks')
+                ->whereNot('school', 'SCHOOL TO BE IDENTIFY')
+                ->whereNot('district', 'SCHOOL TO BE IDENTIFY')
                 ->whereNull('engagement_status')
+                ->whereNull('progress_report')
                 ->get();
 
             return response()->json(['lists' => $lists]);
@@ -240,7 +147,7 @@ class DataLmtListsController extends Controller
                 $query->where('store', $user->store);
             } elseif ($userRole === 'loan_specialist') {
                 $query->where('store', $user->store)
-                      ->where('area', $user->area);
+                    ->where('area', $user->area);
             }
 
             // Apply store, district, and school filters for pie chart
@@ -373,7 +280,6 @@ class DataLmtListsController extends Controller
     public function updatePriorityToEngage(Request $request, $id)
     {
         try {
-
             $request->validate([
                 'priority_to_engage' => ['required', 'string']
             ]);
@@ -385,8 +291,34 @@ class DataLmtListsController extends Controller
 
             return response()->json(['success' => 'Data has been successfully prioritized.']);
         } catch (\Exception $e) {
-
             Log::error("Error prioritizing data: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+    public function updateConversionStatus(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'converted' => ['required', 'string', 'in:Yes,No'],
+                'converted_by' => ['required', 'string']
+            ]);
+
+            $user = Auth::user();
+            $userRole = strtolower($user->roles);
+
+            // Check if user has permission to update conversion status
+            if (!in_array($userRole, ['administrator', 'division_leader'])) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $data = DataLmtLists::findOrFail($id);
+            $data->converted = $request->converted;
+            $data->converted_by = $request->converted_by;
+            $data->save();
+
+            return response()->json(['success' => 'Conversion status updated successfully.']);
+        } catch (\Exception $e) {
+            Log::error("Error updating conversion status: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }
@@ -403,7 +335,7 @@ class DataLmtListsController extends Controller
                 $query->where('store', $user->store);
             } elseif ($userRole === 'loan_specialist') {
                 $query->where('store', $user->store)
-                      ->where('area', $user->area);
+                    ->where('area', $user->area);
             }
 
             $count = $query->count();
@@ -426,7 +358,7 @@ class DataLmtListsController extends Controller
                 $query->where('store', $user->store);
             } elseif ($userRole === 'loan_specialist') {
                 $query->where('store', $user->store)
-                      ->where('area', $user->area);
+                    ->where('area', $user->area);
             }
 
             $count = $query->count();
@@ -443,7 +375,7 @@ class DataLmtListsController extends Controller
             $userRole = strtolower($user->roles);
 
             $query = DataLmtLists::where('engagement_status', 'Engaged')
-                ->select('id', 'store', 'district', 'school', 'name', 'account_status', 'renewal_remarks', 'engagement_status', 'progress_report', 'action_taken_by')
+                ->select('id', 'store', 'area', 'district', 'school', 'name', 'account_status', 'renewal_remarks', 'converted', 'progress_report', 'action_taken_by', 'updated_at')
                 ->orderBy('updated_at', 'desc');
 
             // Apply role-based filters
@@ -451,7 +383,7 @@ class DataLmtListsController extends Controller
                 $query->where('store', $user->store);
             } elseif ($userRole === 'loan_specialist') {
                 $query->where('store', $user->store)
-                      ->where('area', $user->area);
+                    ->where('area', $user->area);
             }
 
             $list = $query->get();
@@ -476,7 +408,7 @@ class DataLmtListsController extends Controller
                 $query->where('store', $user->store);
             } elseif ($userRole === 'loan_specialist') {
                 $query->where('store', $user->store)
-                      ->where('area', $user->area);
+                    ->where('area', $user->area);
             }
 
             $list = $query->get();

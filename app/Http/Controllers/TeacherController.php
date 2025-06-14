@@ -12,7 +12,7 @@ class TeacherController extends Controller
     {
         try {
 
-            $teachers = DataLmtLists::select('id', 'name', 'office', 'district', 'school')
+            $teachers = DataLmtLists::select('id', 'name', 'store', 'district', 'school')
                 ->where('district', '=', 'SCHOOL TO BE IDENTIFY')
                 ->where('school', '=', 'SCHOOL TO BE IDENTIFY')
                 ->get();

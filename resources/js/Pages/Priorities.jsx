@@ -123,16 +123,43 @@ export default function Priorities({ auth }) {
                     filterDisplay="row"
                     loading={loading}
                     globalFilter={globalFilterValue}
-                    header={header}
-                    emptyMessage='No lists found.'
+                    header={renderHeader()}
+                    emptyMessage={<div className="text-center text-gray-500">No list found.</div>}
+                    scrollable
+                    scrollHeight='400px'
+                    className='text-xs'
                 >
-                    <Column field='office' header='STORE' />
-                    <Column field='district' header='DISTRICT' />
-                    <Column field='school' header='SCHOOL' />
-                    <Column field='name' header='NAME' />
-                    <Column field='account_status' header='ACCOUNT STATUS' />
-                    <Column field='eligibility' header='ELIGIBILITY' />
-                    {userRole === 'User' && (
+                    <Column
+                        field='store'
+                        header='STORE'
+                        sortable
+                    />
+                    <Column
+                        field='district'
+                        header='DISTRICT'
+                        sortable
+                    />
+                    <Column
+                        field='school'
+                        header='SCHOOL'
+                        sortable
+                    />
+                    <Column
+                        field='name'
+                        header='NAME'
+                        sortable
+                    />
+                    <Column
+                        field='account_status'
+                        header='ACCOUNT STATUS'
+                        sortable
+                    />
+                    <Column
+                        field='renewal_remarks'
+                        header='ELIGIBILITY'
+                        sortable
+                    />
+                    {userRole === 'team_leader' || userRole === 'loan_specialist' && (
                         <Column
                             header='ACTIONS'
                             body={(rowData) => (

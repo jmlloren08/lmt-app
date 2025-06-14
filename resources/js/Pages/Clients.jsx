@@ -3,6 +3,10 @@ import { Head } from '@inertiajs/react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Toast } from 'primereact/toast';
+import { FilterMatchMode } from 'primereact/api';
+import { IconField } from 'primereact/iconfield';
+import { InputIcon } from 'primereact/inputicon';
+import { InputText } from 'primereact/inputtext';
 
 import AuthenticatedLayout from '../Layouts/AuthenticatedLayout';
 import UpdateSchoolDialog from '../Components/Dialogs/UpdateSchoolDialog';
@@ -16,6 +20,10 @@ export default function Clients({ auth }) {
     const [dialogVisible, setDialogVisible] = useState(false);
     const [selectedDistrict, setSelectedDistrict] = useState('');
     const [selectedSchool, setSelectedSchool] = useState('');
+    const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const [filters, setFilters] = useState({
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    });
 
     const toast = useRef(null);
 
@@ -34,11 +42,28 @@ export default function Clients({ auth }) {
         fetchData();
     }, []);
 
-    const header = (
-        <div className="flex justify-content-between align-items-center">
-            <h1 className='font-semibold p-4'>List of Clients (Schools to be identified)</h1>
-        </div>
-    );
+    const onGlobalFilterValueChange = (e) => {
+        const value = e.target.value;
+        let _filters = { ...filters };
+        _filters['global'].value = value;
+        setFilters(_filters);
+        setGlobalFilterValue(value);
+    }
+
+    const renderHeader = () => {
+        return (
+            <>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                    <IconField iconPosition='left'>
+                        <InputIcon className='pi pi-search' />
+                        <InputText className='px-7' value={globalFilterValue} onChange={onGlobalFilterValueChange} placeholder='Keyword Search' />
+                    </IconField>
+                </div>
+            </>
+        );
+    }
+
+    const header = renderHeader();
 
     const handleShowAssignSchoolDialog = async (teacher) => {
         setSelectedTeacher(teacher.id);
@@ -75,23 +100,31 @@ export default function Clients({ auth }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Manage Teachers</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Manage Clients</h2>}
         >
             <Head title="Manage School" />
             <div className='card bg-white shadow rounded-lg p-4 mb-4'>
                 <div className="overflow-x-auto relative shadow-md sm:rounded-lg">
                     <DataTable
                         value={teachers}
-                        header={header}
+                        paginator
+                        rows={5}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+                        currentPageReportTemplate="{first} to {last} of {totalRecords}"
+                        dataKey="id"
+                        filters={filters}
+                        filterDisplay="row"
                         loading={loading}
+                        globalFilter={globalFilterValue}
+                        header={renderHeader()}
+                        emptyMessage={<div className="text-center text-gray-500">No list found.</div>}
                         scrollable
                         scrollHeight='400px'
-                        paginator
-                        rows={10}
-                        className="p-datatable-xs"
+                        className='text-xs'
                     >
                         <Column field="name" header="Name" sortable />
-                        <Column field="office" header="Store Name" sortable />
+                        <Column field="store" header="Store Name" sortable />
                         <Column field="district" header="District Name" sortable />
                         <Column field="school" header="School Name" sortable />
                         <Column

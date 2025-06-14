@@ -221,7 +221,7 @@ export default function TableLists({ valueFilters, auth, refreshTotalEngaged, re
                                 otherData={otherData}
                                 op={op}
                             />
-                            {userRole === 'User' ? (
+                            {userRole === 'team_leader' || userRole === 'loan_specialist' ? (
                                 <Button
                                     icon='pi pi-check'
                                     label='Engage'

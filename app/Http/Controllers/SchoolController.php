@@ -48,7 +48,7 @@ class SchoolController extends Controller
     {
         try {
 
-            $school = School::select(['ttp', 'comma', 'f_v_b', 'bdo_nb', 'c_b_s', 'c_s_v', 'e_b_i', 'f_c_b', 'gsis_cl', 'gsis_fa', 'gsis_el', 'memba', 'phil_life', 'plfac', 'p_b', 'ucpb', 'w_b', 'grand_total', 'separation', 'elem_sec'])
+            $school = School::select('ttp', 'comma', 'f_v_b', 'bdo_nb', 'c_b_s', 'c_s_v', 'e_b_i', 'f_c_b', 'gsis_cl', 'gsis_fa', 'gsis_el', 'memba', 'phil_life', 'plfac', 'p_b', 'ucpb', 'w_b', 'grand_total', 'separation', 'elem_sec')
                 ->where('id', $id)
                 ->first();
 

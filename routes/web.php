@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\DataLmtListsController;
+use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\StoreManagementController;
+use App\Http\Controllers\UploadController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -64,10 +66,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/stores/{store}', [StoreManagementController::class, 'delete'])->name('stores.delete');
         });
 
-        // Data Retrieval Routes
+        // Data LMT Resource Routes
         Route::controller(DataLmtListsController::class)->group(function () {
+            // get
             Route::get('/get-filtered-data', 'getFilteredData');
             Route::get('/get-distinct-stores', 'getDistinctStore');
+            Route::get('/get-distinct-areas', 'getDistinctArea');
             Route::get('/get-distinct-districts', 'getDistinctDistrict');
             Route::get('/get-distinct-schools', 'getDistinctSchool');
             Route::get('/get-list-where-filters', 'getListWhereFilters');
@@ -78,17 +82,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/get-count-priority-to-engage', 'getCountPriorityToEngage');
             Route::get('/get-list-for-total-engaged', 'getListForTotalEngaged');
             Route::get('/get-list-for-priority-to-engage', 'getListForPriorityToEngage');
+            // patch
+            Route::patch('/save-engage-data/{id}', 'saveEngageData');
+            Route::patch('/update-priority-to-engage/{id}', 'updatePriorityToEngage');
+            Route::patch('/update-conversion-status/{id}', 'updateConversionStatus');
         });
 
-        // School and Client Routes
-        Route::get('/get-list-of-all-schools', [SchoolController::class, 'index']);
-        Route::get('/get-list-of-all-clients', [TeacherController::class, 'index']);
-        Route::get('/get-school-profile/{id}', [SchoolController::class, 'show']);
+        // School Controller Routes
+        Route::controller(SchoolController::class)->group(function () {
+            Route::get('/get-list-of-all-schools', 'index');
+            Route::get('/get-school-profile/{id}', 'show');
+        });
 
-        // Data Update Routes
-        Route::patch('/save-engage-data/{id}', [DataLmtListsController::class, 'saveEngageData']);
-        Route::patch('/update-priority-to-engage/{id}', [DataLmtListsController::class, 'updatePriorityToEngage']);
-        Route::patch('/update-teacher-school/{id}', [TeacherController::class, 'update']);
+        // Teacher Controller Routes
+        Route::controller(TeacherController::class)->group(function () {
+            Route::get('/get-list-of-all-clients', 'index');
+            Route::patch('/update-teacher-school/{id}', 'update');
+        });
 
         // Profile Routes
         Route::controller(ProfileController::class)->group(function () {
@@ -98,11 +108,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         // Data Upload Routes
-        Route::controller(DataLmtListsController::class)->group(function () {
+        Route::controller(UploadController::class)->group(function () {
             Route::get('/data-lmt-list/upload', 'createUploadForm')->name('upload-form');
             Route::post('/data-lmt-list/upload', 'upload')->name('data-lmt-list.upload');
             Route::get('/data-lmt-list/current', 'getCurrentData');
             Route::get('/data-lmt-list/archived', 'getArchivedData');
+        });
+
+        // Data Download Routes
+        Route::controller(DownloadController::class)->group(function () {
+            Route::get('/download-engaged-list', 'downloadEngagedList');
         });
     });
 });
